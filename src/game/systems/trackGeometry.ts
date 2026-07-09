@@ -136,12 +136,13 @@ export function buildRibbon(
     const a = i * 2
     const b = ((i + 1) % n) * 2
     const j = i * 6
+    // CCW seen from above (+y) so front faces point up and aren't culled
     indices[j] = a
-    indices[j + 1] = b
-    indices[j + 2] = a + 1
+    indices[j + 1] = a + 1
+    indices[j + 2] = b
     indices[j + 3] = b
-    indices[j + 4] = b + 1
-    indices[j + 5] = a + 1
+    indices[j + 4] = a + 1
+    indices[j + 5] = b + 1
   }
 
   return { positions, normals, uvs, indices }

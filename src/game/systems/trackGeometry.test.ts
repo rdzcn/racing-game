@@ -36,6 +36,20 @@ describe('buildTrack', () => {
     expect(w).toBeCloseTo(trackConfig.width, 5)
   })
 
+  it('ribbon triangles face up (CCW from +y) so they render with front-face culling', () => {
+    const { positions, indices } = track.road
+    // check every triangle, not just the first — winding must be consistent
+    for (let t = 0; t < indices.length; t += 3) {
+      const [i0, i1, i2] = [indices[t] * 3, indices[t + 1] * 3, indices[t + 2] * 3]
+      const ax = positions[i1] - positions[i0]
+      const az = positions[i1 + 2] - positions[i0 + 2]
+      const bx = positions[i2] - positions[i0]
+      const bz = positions[i2 + 2] - positions[i0 + 2]
+      // y-component of cross(a, b) must be positive (up)
+      expect(az * bx - ax * bz).toBeGreaterThan(0)
+    }
+  })
+
   it('places the configured number of gates on the centerline', () => {
     expect(track.gates).toHaveLength(trackConfig.gateCount)
     for (const g of track.gates) {
