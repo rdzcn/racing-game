@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { vehicleTuning as t } from '../config'
-import { driveForceScalar, lateralGripImpulse, yawVelocity } from './vehicle'
+import { driveForceScalar, lateralGripImpulse, offTrackDragImpulse, yawVelocity } from './vehicle'
 
 describe('driveForceScalar', () => {
   it('accelerates forward under max speed', () => {
@@ -41,6 +41,18 @@ describe('yawVelocity', () => {
   it('flips steering direction in reverse', () => {
     expect(Math.sign(yawVelocity(1, 10, t))).toBe(1)
     expect(Math.sign(yawVelocity(1, -10, t))).toBe(-1)
+  })
+})
+
+describe('offTrackDragImpulse', () => {
+  it('opposes horizontal velocity proportionally, ignores vertical', () => {
+    const out = { x: 0, y: 0, z: 0 }
+    offTrackDragImpulse({ x: 3, y: -5, z: -10 }, 2, 0.05, t, out)
+    expect(out.x).toBeLessThan(0)
+    expect(out.y).toBe(0)
+    expect(out.z).toBeGreaterThan(0)
+    // proportional: x impulse / z impulse matches velocity ratio
+    expect(out.x / out.z).toBeCloseTo(3 / -10)
   })
 })
 

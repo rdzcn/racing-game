@@ -24,6 +24,41 @@ export interface VehicleTuning {
   steerFullEffectSpeed: number
   /** 1/s — how fast lateral (sideways) velocity is cancelled. Higher = grippier */
   grip: number
+  /** 1/s — velocity-proportional drag applied when off track (grass). Caps crawl speed at engineForce/(mass*offTrackDrag) */
+  offTrackDrag: number
+}
+
+export interface TrackConfig {
+  /** Closed centerline loop, (x, z) — swap this array to swap layouts */
+  waypoints: [number, number][]
+  /** Full road width in world units */
+  width: number
+  curbWidth: number
+  /** Checkpoint gates per lap (lap logic in CP4 counts these in order) */
+  gateCount: number
+  /** Gate indices where coins spawn (CP5) */
+  coinSlots: number[]
+  /** Samples along the spline — geometry + detection resolution */
+  samples: number
+}
+
+export const trackConfig: TrackConfig = {
+  // oval ~80x50m with rounded ends
+  waypoints: [
+    [40, 0],
+    [28, 18],
+    [0, 25],
+    [-28, 18],
+    [-40, 0],
+    [-28, -18],
+    [0, -25],
+    [28, -18],
+  ],
+  width: 12,
+  curbWidth: 1.2,
+  gateCount: 12,
+  coinSlots: [1, 3, 5, 7, 9, 11],
+  samples: 256,
 }
 
 export interface CameraConfig {
@@ -42,6 +77,7 @@ export const vehicleTuning: VehicleTuning = {
   steerRate: 2.2,
   steerFullEffectSpeed: 4,
   grip: 6,
+  offTrackDrag: 2,
 }
 
 export const cameraConfig: CameraConfig = {

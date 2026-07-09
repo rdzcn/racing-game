@@ -1,7 +1,12 @@
 import RAPIER from '@dimforge/rapier3d-compat'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { carConfig, vehicleTuning } from './config'
-import { driveForceScalar, lateralGripImpulse, yawVelocity } from './systems/vehicle'
+import {
+  driveForceScalar,
+  lateralGripImpulse,
+  offTrackDragImpulse,
+  yawVelocity,
+} from './systems/vehicle'
 
 // Headless mirror of the CP1 scene: fixed ground cuboid + dynamic car body.
 // Verifies the car drops from spawn and comes to rest on the ground.
@@ -63,6 +68,7 @@ describe('vehicle controller simulation', () => {
     throttle: number,
     steer: number,
     steps: number,
+    offTrack = false,
   ) {
     const out = { x: 0, y: 0, z: 0 }
     for (let i = 0; i < steps; i++) {
@@ -80,6 +86,10 @@ describe('vehicle controller simulation', () => {
       body.setAngvel({ x: av.x, y: yawVelocity(steer, fs, vehicleTuning), z: av.z }, true)
       lateralGripImpulse(vel, fwd, body.mass(), dt, vehicleTuning, out)
       body.applyImpulse(out, true)
+      if (offTrack) {
+        offTrackDragImpulse(body.linvel(), body.mass(), dt, vehicleTuning, out)
+        body.applyImpulse(out, true)
+      }
       world.step()
     }
   }
@@ -111,6 +121,14 @@ describe('vehicle controller simulation', () => {
     const alignment = (vel.x * fwd.x + vel.z * fwd.z) / speed
     // mid-turn slip angle stays modest (~<25°) — drifts a little, doesn't skate
     expect(alignment).toBeGreaterThan(0.9)
+  })
+
+  it('crawls on grass: off-track terminal speed is a fraction of on-track', () => {
+    const { world, body } = makeCarWorld()
+    stepWithInput(world, body, 1, 0, 600, true) // full throttle on grass, ~10s
+    const grassSpeed = Math.hypot(body.linvel().x, body.linvel().z)
+    expect(grassSpeed).toBeGreaterThan(2) // still moving — no dead ends
+    expect(grassSpeed).toBeLessThan(vehicleTuning.maxSpeed * 0.5)
   })
 
   it('coasts to a near-stop when throttle is released', () => {

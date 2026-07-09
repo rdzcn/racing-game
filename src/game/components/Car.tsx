@@ -7,13 +7,19 @@ import { carConfig } from '../config'
  * procedural box-car placeholder. Render-only — driving forces are applied
  * by useVehicleController (CP2) via the forwarded rigid-body ref.
  */
-export const Car = forwardRef<RapierRigidBody>(function Car(_, ref) {
+interface CarProps {
+  /** Start pose (e.g. track start line). Defaults to carConfig.spawnPosition, facing -z. */
+  spawn?: { position: [number, number, number]; yaw: number }
+}
+
+export const Car = forwardRef<RapierRigidBody, CarProps>(function Car({ spawn }, ref) {
   const [hx, hy, hz] = carConfig.colliderHalfExtents
   return (
     <RigidBody
       ref={ref}
       colliders={false}
-      position={carConfig.spawnPosition}
+      position={spawn?.position ?? carConfig.spawnPosition}
+      rotation={[0, spawn?.yaw ?? 0, 0]}
       angularDamping={2}
       linearDamping={0.1}
     >

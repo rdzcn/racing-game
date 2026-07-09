@@ -44,6 +44,24 @@ export function yawVelocity(steer: number, forwardSpeed: number, t: VehicleTunin
 }
 
 /**
+ * Velocity-proportional drag impulse for driving on grass (off-track).
+ * Slows the car to a crawl without stopping it — forgiving, no hard walls.
+ */
+export function offTrackDragImpulse(
+  velocity: Vec3Like,
+  mass: number,
+  dt: number,
+  t: VehicleTuning,
+  out: Vec3Like,
+): Vec3Like {
+  const k = Math.min(t.offTrackDrag * dt, 1) * mass
+  out.x = -velocity.x * k
+  out.y = 0
+  out.z = -velocity.z * k
+  return out
+}
+
+/**
  * Impulse cancelling a fraction of lateral (sideways) velocity this step —
  * arcade grip that stops the car sliding like a hockey puck.
  * `forward` must be normalized. Returns a newly-filled `out` (no allocation).
