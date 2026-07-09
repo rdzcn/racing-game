@@ -1,0 +1,68 @@
+import type { VehicleTuning } from '../config'
+
+export interface DriveInput {
+  /** -1..1 — positive = accelerate forward */
+  throttle: number
+  /** -1..1 — positive = steer left */
+  steer: number
+}
+
+export interface Vec3Like {
+  x: number
+  y: number
+  z: number
+}
+
+/**
+ * Scalar drive force along the car's forward axis.
+ * Arcade rules: throttle against current motion acts as brake (engineForce),
+ * released throttle applies coast drag, speed is clamped at both ends.
+ */
+export function driveForceScalar(
+  forwardSpeed: number,
+  throttle: number,
+  t: VehicleTuning,
+): number {
+  if (throttle > 0) {
+    return forwardSpeed >= t.maxSpeed ? 0 : throttle * t.engineForce
+  }
+  if (throttle < 0) {
+    return forwardSpeed <= -t.maxReverseSpeed ? 0 : throttle * t.engineForce
+  }
+  // coasting: drag opposing motion, dead zone near standstill to avoid jitter
+  if (Math.abs(forwardSpeed) < 0.2) return 0
+  return -Math.sign(forwardSpeed) * t.coastDrag
+}
+
+/**
+ * Yaw angular velocity from steering input. Effectiveness ramps with speed
+ * (no tank-turning at standstill) and flips sign in reverse, like a real car.
+ */
+export function yawVelocity(steer: number, forwardSpeed: number, t: VehicleTuning): number {
+  const effectiveness = Math.min(Math.abs(forwardSpeed) / t.steerFullEffectSpeed, 1)
+  return steer * t.steerRate * effectiveness * Math.sign(forwardSpeed || 1)
+}
+
+/**
+ * Impulse cancelling a fraction of lateral (sideways) velocity this step —
+ * arcade grip that stops the car sliding like a hockey puck.
+ * `forward` must be normalized. Returns a newly-filled `out` (no allocation).
+ */
+export function lateralGripImpulse(
+  velocity: Vec3Like,
+  forward: Vec3Like,
+  mass: number,
+  dt: number,
+  t: VehicleTuning,
+  out: Vec3Like,
+): Vec3Like {
+  const fs = velocity.x * forward.x + velocity.y * forward.y + velocity.z * forward.z
+  // lateral = velocity - forward * forwardSpeed (horizontal only — leave gravity alone)
+  const latX = velocity.x - forward.x * fs
+  const latZ = velocity.z - forward.z * fs
+  const k = Math.min(t.grip * dt, 1) * mass
+  out.x = -latX * k
+  out.y = 0
+  out.z = -latZ * k
+  return out
+}
