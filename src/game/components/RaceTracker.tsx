@@ -1,4 +1,4 @@
-import { useRef, type RefObject } from 'react'
+import { useEffect, useRef, type RefObject } from 'react'
 import { useFrame } from '@react-three/fiber'
 import type { RapierRigidBody } from '@react-three/rapier'
 import { useRaceStore } from '../state/raceStore'
@@ -17,9 +17,17 @@ export function RaceTracker({
   const progress = useRef(createLapProgress())
   const startLap = useRaceStore((s) => s.startLap)
   const completeLap = useRaceStore((s) => s.completeLap)
+  const status = useRaceStore((s) => s.status)
+  const resetCount = useRaceStore((s) => s.resetCount)
   const radius = track.halfWidth + track.curbWidth
 
+  // fresh gate progress whenever a race (re)starts
+  useEffect(() => {
+    progress.current = createLapProgress()
+  }, [resetCount])
+
   useFrame(() => {
+    if (status !== 'playing') return
     const body = carRef.current
     if (!body) return
     const p = body.translation()

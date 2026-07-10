@@ -18,12 +18,14 @@ function useNow(active: boolean): number {
 export function HUD() {
   const lap = useRaceStore((s) => s.lap)
   const lapStartTime = useRaceStore((s) => s.lapStartTime)
+  const pausedAt = useRaceStore((s) => s.pausedAt)
   const lastLapTime = useRaceStore((s) => s.lastLapTime)
   const bestLapTime = useRaceStore((s) => s.bestLapTime)
   const coinsCollected = useRaceStore((s) => s.coinsCollected)
   const totalCoins = useRaceStore((s) => s.collectedCoins.length)
-  const now = useNow(lapStartTime != null)
-  const elapsed = lapStartTime != null ? Math.max(0, now - lapStartTime) : null
+  const now = useNow(lapStartTime != null && pausedAt == null)
+  // while paused the clock freezes at the pause moment
+  const elapsed = lapStartTime != null ? Math.max(0, (pausedAt ?? now) - lapStartTime) : null
 
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-4 font-mono text-white [text-shadow:0_2px_4px_rgba(0,0,0,0.8)]">

@@ -1,4 +1,5 @@
-const SHADOW_BOUNDS = 40
+// must cover the whole circuit (±75m) or the car's shadow vanishes mid-lap
+const SHADOW_BOUNDS = 95
 
 export function Lights() {
   return (
