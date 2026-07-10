@@ -1,17 +1,19 @@
-import { forwardRef } from 'react'
+import { Component, Suspense, forwardRef, useEffect, type ReactNode } from 'react'
+import { Mesh } from 'three'
+import { useGLTF } from '@react-three/drei'
 import { CuboidCollider, RigidBody, type RapierRigidBody } from '@react-three/rapier'
 import { carConfig } from '../config'
 
-/**
- * Car rigid body. Renders the .glb model when configured, otherwise a
- * procedural box-car placeholder. Render-only — driving forces are applied
- * by useVehicleController (CP2) via the forwarded rigid-body ref.
- */
 interface CarProps {
   /** Start pose (e.g. track start line). Defaults to carConfig.spawnPosition, facing -z. */
   spawn?: { position: [number, number, number]; yaw: number }
 }
 
+/**
+ * Car rigid body. Renders the .glb from carConfig when configured, otherwise
+ * (or while loading / on load failure) the procedural box-car. Render-only —
+ * driving forces are applied by useVehicleController via the forwarded ref.
+ */
 export const Car = forwardRef<RapierRigidBody, CarProps>(function Car({ spawn }, ref) {
   const [hx, hy, hz] = carConfig.colliderHalfExtents
   return (
@@ -24,12 +26,41 @@ export const Car = forwardRef<RapierRigidBody, CarProps>(function Car({ spawn },
       linearDamping={0.1}
     >
       <CuboidCollider args={[hx, hy, hz]} />
-      <BoxCar />
+      {carConfig.modelPath ? (
+        <ModelErrorBoundary fallback={<BoxCar />}>
+          <Suspense fallback={<BoxCar />}>
+            <CarModel path={carConfig.modelPath} />
+          </Suspense>
+        </ModelErrorBoundary>
+      ) : (
+        <BoxCar />
+      )}
     </RigidBody>
   )
 })
 
-/** Placeholder until a real model lands in public/models/ (see carConfig.modelPath). */
+function CarModel({ path }: { path: string }) {
+  const { scene } = useGLTF(path)
+
+  useEffect(() => {
+    scene.traverse((o) => {
+      if (o instanceof Mesh) o.castShadow = true
+    })
+  }, [scene])
+
+  return (
+    <primitive
+      object={scene}
+      scale={carConfig.scale}
+      position={carConfig.offset}
+      rotation={[0, carConfig.rotationY, 0]}
+    />
+  )
+}
+
+if (carConfig.modelPath) useGLTF.preload(carConfig.modelPath)
+
+/** Fallback while the model loads or if it's missing/broken. */
 function BoxCar() {
   return (
     <group scale={carConfig.scale}>
@@ -45,4 +76,24 @@ function BoxCar() {
       </mesh>
     </group>
   )
+}
+
+/** Minimal error boundary — render errors from a broken/missing .glb fall back to the box-car. */
+class ModelErrorBoundary extends Component<
+  { fallback: ReactNode; children: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false }
+
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+
+  componentDidCatch(error: Error) {
+    console.warn('Car model failed to load, using box-car fallback:', error.message)
+  }
+
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children
+  }
 }
