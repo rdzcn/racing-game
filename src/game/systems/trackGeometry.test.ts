@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { trackConfig } from '../config'
+import { getTrack } from '../config'
 import {
   buildTrack,
   isOffTrack,
@@ -8,12 +8,13 @@ import {
   yawFromTangent,
 } from './trackGeometry'
 
-const track = buildTrack(trackConfig)
+const meadow = getTrack('meadow')
+const track = buildTrack(meadow)
 
 describe('buildTrack', () => {
   it('produces a closed, evenly-sampled centerline', () => {
     const line = track.centerline
-    expect(line).toHaveLength(trackConfig.samples)
+    expect(line).toHaveLength(meadow.source.kind === 'waypoints' ? meadow.source.samples : -1)
     // spacing between consecutive samples (incl. wrap-around) is near-uniform
     const dist = (a: number, b: number) =>
       Math.hypot(line[a].x - line[b].x, line[a].z - line[b].z)
@@ -30,14 +31,14 @@ describe('buildTrack', () => {
   })
 
   it('road ribbon spans the configured width', () => {
-    const p = track.road.positions
+    const p = track.geometry!.road.positions
     // first sample: left and right edge verts
     const w = Math.hypot(p[3] - p[0], p[5] - p[2])
-    expect(w).toBeCloseTo(trackConfig.width, 5)
+    expect(w).toBeCloseTo(meadow.width, 5)
   })
 
   it('ribbon triangles face up (CCW from +y) so they render with front-face culling', () => {
-    const { positions, indices } = track.road
+    const { positions, indices } = track.geometry!.road
     // check every triangle, not just the first — winding must be consistent
     for (let t = 0; t < indices.length; t += 3) {
       const [i0, i1, i2] = [indices[t] * 3, indices[t + 1] * 3, indices[t + 2] * 3]
@@ -51,7 +52,7 @@ describe('buildTrack', () => {
   })
 
   it('places the configured number of gates on the centerline', () => {
-    expect(track.gates).toHaveLength(trackConfig.gateCount)
+    expect(track.gates).toHaveLength(meadow.gateCount)
     for (const g of track.gates) {
       const i = nearestCenterlineIndex(track, g.x, g.z)
       const c = track.centerline[i]
@@ -119,6 +120,41 @@ describe('off-track detection', () => {
     expect(isOffTrack(track, c.x + -t.z * off, c.z + t.x * off)).toBe(true)
     // and deep infield
     expect(isOffTrack(track, 0, 0)).toBe(true)
+  })
+})
+
+describe('buildTrack from a mesh centerline (grand circuit)', () => {
+  const grand = getTrack('grand')
+  const gt = buildTrack(grand)
+
+  it('passes centerline points through with heights and no generated geometry', () => {
+    expect(gt.geometry).toBeUndefined()
+    expect(gt.centerline.length).toBeGreaterThan(500)
+    // real elevation data survived extraction
+    const ys = gt.centerline.map((c) => c.y)
+    expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThan(10)
+  })
+
+  it('tangents are unit length and gates carry road height', () => {
+    for (const t of gt.tangents) expect(Math.hypot(t.x, t.z)).toBeCloseTo(1, 5)
+    expect(gt.gates).toHaveLength(grand.gateCount)
+    const gateWithHeight = gt.gates.find((g) => Math.abs(g.y) > 1)
+    expect(gateWithHeight).toBeDefined()
+  })
+
+  it('respawnPose returns road height, not 0', () => {
+    // find a sample with meaningful elevation and query from beside it
+    const i = gt.centerline.findIndex((c) => c.y > 5)
+    const c = gt.centerline[i]
+    const pose = respawnPose(gt, c.x + 10, c.z)
+    expect(pose.y).toBeGreaterThan(1)
+  })
+
+  it('closed loop: wrap-around spacing matches sample spacing', () => {
+    const line = gt.centerline
+    const d = (a: number, b: number) =>
+      Math.hypot(line[a].x - line[b].x, line[a].z - line[b].z)
+    expect(d(line.length - 1, 0)).toBeLessThan(d(0, 1) * 3)
   })
 })
 

@@ -1,14 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { trackConfig } from '../config'
+import { getTrack } from '../config'
 import { createLapProgress, processGateCrossing } from './raceRules'
 import { buildTrack, type Gate } from './trackGeometry'
 
+const meadow = getTrack('meadow')
+
 // square "track": 4 gates, travel direction counter-clockwise
 const gates: Gate[] = [
-  { x: 10, z: 0, tx: 0, tz: -1 }, // start, heading -z
-  { x: 0, z: -10, tx: -1, tz: 0 },
-  { x: -10, z: 0, tx: 0, tz: 1 },
-  { x: 0, z: 10, tx: 1, tz: 0 },
+  { x: 10, y: 0, z: 0, tx: 0, tz: -1 }, // start, heading -z
+  { x: 0, y: 0, z: -10, tx: -1, tz: 0 },
+  { x: -10, y: 0, z: 0, tx: 0, tz: 1 },
+  { x: 0, y: 0, z: 10, tx: 1, tz: 0 },
 ]
 const R = 3
 
@@ -74,7 +76,7 @@ describe('processGateCrossing', () => {
 
 describe('integration with the real track', () => {
   it('driving the centerline start-to-start produces started + one lap', () => {
-    const track = buildTrack(trackConfig)
+    const track = buildTrack(meadow)
     const radius = track.halfWidth + track.curbWidth
     const p = createLapProgress()
     const events: string[] = []
@@ -91,6 +93,6 @@ describe('integration with the real track', () => {
 
     expect(events[0]).toBe('started')
     expect(events.filter((e) => e === 'lap')).toHaveLength(1)
-    expect(events.filter((e) => e === 'gate')).toHaveLength(trackConfig.gateCount - 1)
+    expect(events.filter((e) => e === 'gate')).toHaveLength(meadow.gateCount - 1)
   })
 })

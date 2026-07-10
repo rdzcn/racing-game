@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { trackConfig } from '../config'
+import { defaultTrackId, getTrack } from '../config'
 
 export type GameStatus = 'menu' | 'playing' | 'paused'
 
@@ -9,6 +9,7 @@ export type GameStatus = 'menu' | 'playing' | 'paused'
  */
 export interface RaceState {
   status: GameStatus
+  selectedTrackId: string
   /** 0 = not started yet, then 1-based current lap */
   lap: number
   /** performance.now() when the current lap started, null before the race starts */
@@ -23,6 +24,7 @@ export interface RaceState {
   coinsCollected: number
   /** bumped on restart — scene components watch it to teleport the car etc. */
   resetCount: number
+  selectTrack: (id: string) => void
   startGame: () => void
   pause: (now: number) => void
   resume: (now: number) => void
@@ -43,18 +45,30 @@ const initialRace = {
   coinsCollected: 0,
 }
 
-const freshCoins = () => trackConfig.coinSlots.map(() => false)
+const freshCoins = (trackId: string) => getTrack(trackId).coinSlots.map(() => false)
 
 export const useRaceStore = create<RaceState>()((set) => ({
   status: 'menu',
+  selectedTrackId: defaultTrackId,
   ...initialRace,
-  collectedCoins: freshCoins(),
+  collectedCoins: freshCoins(defaultTrackId),
   resetCount: 0,
 
+  selectTrack: (id) =>
+    set((s) =>
+      s.status === 'menu'
+        ? {
+            selectedTrackId: id,
+            collectedCoins: freshCoins(id),
+            coinsCollected: 0,
+            bestLapTime: null, // best laps aren't comparable across tracks
+          }
+        : s,
+    ),
   startGame: () =>
     set((s) => ({
       ...initialRace,
-      collectedCoins: freshCoins(),
+      collectedCoins: freshCoins(s.selectedTrackId),
       status: 'playing',
       resetCount: s.resetCount + 1,
     })),
@@ -75,14 +89,15 @@ export const useRaceStore = create<RaceState>()((set) => ({
     set((s) => ({
       ...initialRace,
       bestLapTime: s.bestLapTime, // "beat your best" survives a restart
-      collectedCoins: freshCoins(),
+      collectedCoins: freshCoins(s.selectedTrackId),
       status: 'playing',
       resetCount: s.resetCount + 1,
     })),
   toMenu: () =>
     set((s) => ({
       ...initialRace,
-      collectedCoins: freshCoins(),
+      bestLapTime: s.bestLapTime, // shown as the target on the menu
+      collectedCoins: freshCoins(s.selectedTrackId),
       status: 'menu',
       resetCount: s.resetCount + 1,
     })),
@@ -106,5 +121,11 @@ export const useRaceStore = create<RaceState>()((set) => ({
       return { collectedCoins, coinsCollected: s.coinsCollected + 1 }
     }),
   reset: () =>
-    set({ ...initialRace, collectedCoins: freshCoins(), status: 'menu', resetCount: 0 }),
+    set({
+      ...initialRace,
+      selectedTrackId: defaultTrackId,
+      collectedCoins: freshCoins(defaultTrackId),
+      status: 'menu',
+      resetCount: 0,
+    }),
 }))

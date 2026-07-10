@@ -1,4 +1,5 @@
 import { MODELS } from './assets/registry'
+import { GRAND_CIRCUIT_CENTERLINE } from './assets/tracks/grandCircuitCenterline'
 
 export interface CarConfig {
   /** Path under public/ to a .glb/.gltf model; null → procedural box-car fallback */
@@ -30,24 +31,32 @@ export interface VehicleTuning {
   offTrackDrag: number
 }
 
-export interface TrackConfig {
-  /** Closed centerline loop, (x, z) — swap this array to swap layouts */
-  waypoints: [number, number][]
+/** Where the road comes from: authored waypoints (we generate the geometry)
+ * or a mesh model with a pre-extracted centerline (see scripts/). */
+export type TrackSource =
+  | { kind: 'waypoints'; waypoints: [number, number][]; samples: number }
+  | { kind: 'centerline'; modelPath: string; points: [number, number, number][] }
+
+export interface TrackDefinition {
+  id: string
+  label: string
+  /** shown on the track-select card */
+  description: string
   /** Full road width in world units */
   width: number
   curbWidth: number
-  /** Checkpoint gates per lap (lap logic in CP4 counts these in order) */
+  /** Checkpoint gates per lap (counted in order) */
   gateCount: number
-  /** Gate indices where coins spawn (CP5) */
+  /** Gate indices where coins spawn */
   coinSlots: number[]
-  /** Samples along the spline — geometry + detection resolution */
-  samples: number
+  /** Car falls below this y → respawn (kid-safety: no lost-forever states) */
+  killPlaneY: number
+  /** drag: grass slows you down. respawn: leaving the road puts you back on it. */
+  offTrackMode: 'drag' | 'respawn'
+  source: TrackSource
 }
 
-export const trackConfig: TrackConfig = {
-  // circuit ~150x120m: start straight → left sweeper → hairpin → esses →
-  // bottom straight → right sweeper → chicane back onto the straight
-  waypoints: [
+const meadowWaypoints: [number, number][] = [
     [40, 56], // start/finish, on the straight heading -x
     [-10, 58],
     [-45, 54], // end of start straight
@@ -73,12 +82,43 @@ export const trackConfig: TrackConfig = {
     [72, -10],
     [64, 25],
     [56, 45], // final corner onto the start straight
-  ],
-  width: 12,
-  curbWidth: 1.2,
-  gateCount: 12,
-  coinSlots: [1, 3, 5, 7, 9, 11],
-  samples: 384,
+  ]
+
+export const tracks: TrackDefinition[] = [
+  {
+    id: 'meadow',
+    label: 'Meadow Circuit',
+    description: '~0.5 km · flat & forgiving · grass slows you down',
+    width: 12,
+    curbWidth: 1.2,
+    gateCount: 12,
+    coinSlots: [1, 3, 5, 7, 9, 11],
+    killPlaneY: -10,
+    offTrackMode: 'drag',
+    source: { kind: 'waypoints', waypoints: meadowWaypoints, samples: 384 },
+  },
+  {
+    id: 'grand',
+    label: 'Grand Circuit',
+    description: '3.3 km · hills & long straights · stay on the road!',
+    width: 9,
+    curbWidth: 0.8,
+    gateCount: 24,
+    coinSlots: [2, 5, 8, 11, 14, 17, 20, 23],
+    killPlaneY: -30,
+    offTrackMode: 'respawn',
+    source: {
+      kind: 'centerline',
+      modelPath: MODELS.grandTrack,
+      points: GRAND_CIRCUIT_CENTERLINE,
+    },
+  },
+]
+
+export const defaultTrackId = 'meadow'
+
+export function getTrack(id: string): TrackDefinition {
+  return tracks.find((t) => t.id === id) ?? tracks[0]
 }
 
 export interface CameraConfig {
@@ -90,9 +130,9 @@ export interface CameraConfig {
 }
 
 export const vehicleTuning: VehicleTuning = {
-  engineForce: 110,
+  engineForce: 170, // enough punch to actually reach top speed against damping
   coastDrag: 25,
-  maxSpeed: 28,
+  maxSpeed: 42, // ≈ 151 km/h
   maxReverseSpeed: 8,
   steerRate: 2.2,
   steerFullEffectSpeed: 4,
@@ -106,9 +146,6 @@ export const cameraConfig: CameraConfig = {
   lookAtHeight: 1,
   damping: 4,
 }
-
-/** Car falls below this y → respawn at spawnPosition (kid-safety: no lost-forever states) */
-export const KILL_PLANE_Y = -10
 
 export const carConfig: CarConfig = {
   modelPath: MODELS.car,

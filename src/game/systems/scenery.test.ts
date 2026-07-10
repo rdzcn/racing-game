@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { trackConfig } from '../config'
+import { getTrack } from '../config'
 import { generatePlacements, mulberry32 } from './scenery'
 import { buildTrack, nearestCenterlineIndex } from './trackGeometry'
 
-const track = buildTrack(trackConfig)
+const meadow = getTrack('meadow')
+const track = buildTrack(meadow)
 
 describe('generatePlacements', () => {
   const opts = { bound: 95, clearance: 5, seed: 42 }

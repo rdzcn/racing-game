@@ -1,9 +1,12 @@
 import { useProgress } from '@react-three/drei'
+import { tracks } from '../game/config'
 import { useRaceStore } from '../game/state/raceStore'
 
 export function Menu() {
   const startGame = useRaceStore((s) => s.startGame)
   const bestLapTime = useRaceStore((s) => s.bestLapTime)
+  const selectedTrackId = useRaceStore((s) => s.selectedTrackId)
+  const selectTrack = useRaceStore((s) => s.selectTrack)
   const { active, progress } = useProgress()
 
   return (
@@ -11,6 +14,23 @@ export function Menu() {
       <h1 className="text-7xl font-black tracking-tight text-white [text-shadow:0_4px_16px_rgba(0,0,0,0.6)]">
         🏁 RACING
       </h1>
+
+      <div className="flex gap-4">
+        {tracks.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => selectTrack(t.id)}
+            className={`w-64 rounded-2xl border-4 p-4 text-left text-white transition hover:scale-105 ${
+              t.id === selectedTrackId
+                ? 'border-emerald-400 bg-emerald-500/30'
+                : 'border-white/20 bg-black/30 hover:border-white/50'
+            }`}
+          >
+            <div className="text-2xl font-black">{t.label}</div>
+            <div className="mt-1 text-sm text-white/80">{t.description}</div>
+          </button>
+        ))}
+      </div>
 
       <button
         onClick={startGame}

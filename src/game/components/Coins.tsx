@@ -2,7 +2,6 @@ import { useMemo, useRef, type RefObject } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Group } from 'three'
 import type { RapierRigidBody } from '@react-three/rapier'
-import { trackConfig } from '../config'
 import { useRaceStore } from '../state/raceStore'
 import { checkCoinPickup, coinPositions } from '../systems/coins'
 import type { TrackData } from '../systems/trackGeometry'
@@ -19,7 +18,7 @@ export function Coins({
   carRef: RefObject<RapierRigidBody | null>
   track: TrackData
 }) {
-  const positions = useMemo(() => coinPositions(track, trackConfig.coinSlots), [track])
+  const positions = useMemo(() => coinPositions(track, track.def.coinSlots), [track])
   const collected = useRaceStore((s) => s.collectedCoins)
   const collectCoin = useRaceStore((s) => s.collectCoin)
   const groupRef = useRef<Group>(null)
@@ -40,7 +39,7 @@ export function Coins({
     <group ref={groupRef}>
       {positions.map((pos, i) =>
         collected[i] ? null : (
-          <group key={i} position={[pos.x, COIN_Y, pos.z]}>
+          <group key={i} position={[pos.x, pos.y + COIN_Y, pos.z]}>
             <mesh castShadow rotation={[Math.PI / 2, 0, 0]}>
               <cylinderGeometry args={[0.7, 0.7, 0.15, 24]} />
               <meshStandardMaterial

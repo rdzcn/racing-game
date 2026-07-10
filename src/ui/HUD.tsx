@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useRaceStore } from '../game/state/raceStore'
+import { telemetry } from '../game/state/telemetry'
 import { formatLapTime } from './format'
 
 /** 10Hz clock — plenty for a 0.1s display, keeps re-renders off the hot path. */
@@ -23,9 +24,12 @@ export function HUD() {
   const bestLapTime = useRaceStore((s) => s.bestLapTime)
   const coinsCollected = useRaceStore((s) => s.coinsCollected)
   const totalCoins = useRaceStore((s) => s.collectedCoins.length)
-  const now = useNow(lapStartTime != null && pausedAt == null)
+  const status = useRaceStore((s) => s.status)
+  // ticks at 10Hz while playing — drives both the lap clock and the speedo refresh
+  const now = useNow(status === 'playing')
   // while paused the clock freezes at the pause moment
   const elapsed = lapStartTime != null ? Math.max(0, (pausedAt ?? now) - lapStartTime) : null
+  const speed = Math.round(telemetry.speedKmh)
 
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-4 font-mono text-white [text-shadow:0_2px_4px_rgba(0,0,0,0.8)]">
@@ -49,6 +53,12 @@ export function HUD() {
           {lastLapTime != null && <div>Last {formatLapTime(lastLapTime)}</div>}
           {bestLapTime != null && <div>Best {formatLapTime(bestLapTime)}</div>}
         </div>
+      </div>
+
+      {/* speedometer — fixed so it anchors to the viewport, not the top bar */}
+      <div className="pointer-events-none fixed inset-x-0 bottom-6 flex flex-col items-center">
+        <div className="text-5xl font-black tabular-nums">{speed}</div>
+        <div className="text-sm font-bold uppercase tracking-widest opacity-80">km/h</div>
       </div>
     </div>
   )

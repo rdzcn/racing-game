@@ -1,10 +1,10 @@
-import type { TrackData, Vec2 } from './trackGeometry'
+import type { CenterPoint, TrackData, Vec2 } from './trackGeometry'
 
-/** Coins sit on the track centerline at the configured gate slots. */
-export function coinPositions(track: TrackData, coinSlots: number[]): Vec2[] {
+/** Coins sit on the track centerline (at road height) at the configured gate slots. */
+export function coinPositions(track: TrackData, coinSlots: number[]): CenterPoint[] {
   return coinSlots.map((slot) => {
     const g = track.gates[slot % track.gates.length]
-    return { x: g.x, z: g.z }
+    return { x: g.x, y: g.y, z: g.z }
   })
 }
 

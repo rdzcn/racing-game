@@ -1,7 +1,7 @@
 import { Suspense, useMemo, useRef } from 'react'
 import type { Group } from 'three'
 import { Physics, type RapierRigidBody } from '@react-three/rapier'
-import { carConfig, trackConfig } from '../config'
+import { carConfig, getTrack } from '../config'
 import { useRaceStore } from '../state/raceStore'
 import { buildTrack } from '../systems/trackGeometry'
 import { Car } from './Car'
@@ -21,10 +21,13 @@ export function GameScene() {
   const carRef = useRef<RapierRigidBody>(null)
   const carVisualRef = useRef<Group>(null)
   const status = useRaceStore((s) => s.status)
-  const track = useMemo(() => buildTrack(trackConfig), [])
+  const trackId = useRaceStore((s) => s.selectedTrackId)
+
+  const def = getTrack(trackId)
+  const track = useMemo(() => buildTrack(def), [def])
   const spawn = useMemo(
     () => ({
-      position: [track.start.x, carConfig.spawnPosition[1], track.start.z] as [
+      position: [track.start.x, track.start.y + carConfig.spawnPosition[1], track.start.z] as [
         number,
         number,
         number,
@@ -33,17 +36,19 @@ export function GameScene() {
     }),
     [track],
   )
+  const isFlatTrack = def.source.kind === 'waypoints'
 
   return (
     <Suspense fallback={null}>
       <Lights />
       <SkyAndEnvironment />
-      <Scenery track={track} />
       <Effects />
       <ChaseCamera targetRef={carVisualRef} />
       <RaceTracker carRef={carRef} track={track} />
-      <Physics paused={status !== 'playing'}>
-        <Ground />
+      {/* key remounts physics bodies/colliders cleanly on track change */}
+      <Physics key={def.id} paused={status !== 'playing'}>
+        {isFlatTrack && <Ground />}
+        {isFlatTrack && <Scenery track={track} />}
         <Track data={track} />
         <Coins carRef={carRef} track={track} />
         <Car ref={carRef} visualRef={carVisualRef} spawn={spawn} />

@@ -1,9 +1,14 @@
 import { CatmullRomCurve3, Vector3 } from 'three'
-import type { TrackConfig } from '../config'
+import type { TrackDefinition } from '../config'
 
 export interface Vec2 {
   x: number
   z: number
+}
+
+/** Centerline sample — y is the road surface height (0 for flat tracks) */
+export interface CenterPoint extends Vec2 {
+  y: number
 }
 
 /** Flat (y-up) ribbon strip along the centerline — road surface, curbs */
@@ -14,27 +19,33 @@ export interface RibbonGeometry {
   indices: Uint32Array
 }
 
-export interface Gate extends Vec2 {
+export interface Gate extends CenterPoint {
   /** unit tangent (direction of travel) at the gate */
   tx: number
   tz: number
 }
 
-export interface Pose extends Vec2 {
+export interface Pose extends CenterPoint {
   yaw: number
 }
 
-export interface TrackData {
-  centerline: Vec2[]
-  /** unit tangents per sample */
-  tangents: Vec2[]
-  halfWidth: number
-  curbWidth: number
+/** Ribbon geometry for generated (waypoint) tracks; mesh tracks render their model instead */
+export interface GeneratedTrackGeometry {
   road: RibbonGeometry
   curbLeft: RibbonGeometry
   curbRight: RibbonGeometry
   /** per-vertex stripe colors for the curbs (shared by both sides) */
   curbColors: Float32Array
+}
+
+export interface TrackData {
+  def: TrackDefinition
+  centerline: CenterPoint[]
+  /** unit xz tangents per sample */
+  tangents: Vec2[]
+  halfWidth: number
+  curbWidth: number
+  geometry?: GeneratedTrackGeometry
   gates: Gate[]
   start: Pose
 }
@@ -47,30 +58,28 @@ export function yawFromTangent(tx: number, tz: number): number {
 const ROAD_Y = 0.02
 const CURB_Y = 0.03
 
-export function buildTrack(config: TrackConfig): TrackData {
-  const points = config.waypoints.map(([x, z]) => new Vector3(x, 0, z))
-  const curve = new CatmullRomCurve3(points, true, 'centripetal')
+export function buildTrack(def: TrackDefinition): TrackData {
+  const { centerline, tangents } =
+    def.source.kind === 'waypoints'
+      ? sampleWaypointSpline(def.source.waypoints, def.source.samples)
+      : fromCenterlinePoints(def.source.points)
 
-  const n = config.samples
-  const centerline: Vec2[] = new Array(n)
-  const tangents: Vec2[] = new Array(n)
-  const spaced = curve.getSpacedPoints(n) // n+1 points, last === first
-  const tmp = new Vector3()
-  for (let i = 0; i < n; i++) {
-    centerline[i] = { x: spaced[i].x, z: spaced[i].z }
-    curve.getTangentAt(i / n, tmp)
-    const len = Math.hypot(tmp.x, tmp.z) || 1
-    tangents[i] = { x: tmp.x / len, z: tmp.z / len }
-  }
+  const n = centerline.length
+  const halfWidth = def.width / 2
 
-  const halfWidth = config.width / 2
-  const road = buildRibbon(centerline, tangents, -halfWidth, halfWidth, ROAD_Y)
-  const curbLeft = buildRibbon(centerline, tangents, -halfWidth - config.curbWidth, -halfWidth, CURB_Y)
-  const curbRight = buildRibbon(centerline, tangents, halfWidth, halfWidth + config.curbWidth, CURB_Y)
+  const geometry =
+    def.source.kind === 'waypoints'
+      ? {
+          road: buildRibbon(centerline, tangents, -halfWidth, halfWidth, ROAD_Y),
+          curbLeft: buildRibbon(centerline, tangents, -halfWidth - def.curbWidth, -halfWidth, CURB_Y),
+          curbRight: buildRibbon(centerline, tangents, halfWidth, halfWidth + def.curbWidth, CURB_Y),
+          curbColors: buildCurbColors(n),
+        }
+      : undefined
 
   const gates: Gate[] = []
-  for (let g = 0; g < config.gateCount; g++) {
-    const i = Math.round((g * n) / config.gateCount) % n
+  for (let g = 0; g < def.gateCount; g++) {
+    const i = Math.round((g * n) / def.gateCount) % n
     gates.push({ ...centerline[i], tx: tangents[i].x, tz: tangents[i].z })
   }
 
@@ -80,17 +89,48 @@ export function buildTrack(config: TrackConfig): TrackData {
   }
 
   return {
+    def,
     centerline,
     tangents,
     halfWidth,
-    curbWidth: config.curbWidth,
-    road,
-    curbLeft,
-    curbRight,
-    curbColors: buildCurbColors(n),
+    curbWidth: def.curbWidth,
+    geometry,
     gates,
     start,
   }
+}
+
+/** Waypoints → closed Catmull-Rom spline, evenly resampled (flat, y = 0) */
+function sampleWaypointSpline(waypoints: [number, number][], samples: number) {
+  const points = waypoints.map(([x, z]) => new Vector3(x, 0, z))
+  const curve = new CatmullRomCurve3(points, true, 'centripetal')
+  const centerline: CenterPoint[] = new Array(samples)
+  const tangents: Vec2[] = new Array(samples)
+  const spaced = curve.getSpacedPoints(samples) // n+1 points, last === first
+  const tmp = new Vector3()
+  for (let i = 0; i < samples; i++) {
+    centerline[i] = { x: spaced[i].x, y: 0, z: spaced[i].z }
+    curve.getTangentAt(i / samples, tmp)
+    const len = Math.hypot(tmp.x, tmp.z) || 1
+    tangents[i] = { x: tmp.x / len, z: tmp.z / len }
+  }
+  return { centerline, tangents }
+}
+
+/** Pre-extracted mesh centerline (x, roadY, z) → samples + finite-difference tangents */
+function fromCenterlinePoints(points: [number, number, number][]) {
+  const n = points.length
+  const centerline: CenterPoint[] = points.map(([x, y, z]) => ({ x, y, z }))
+  const tangents: Vec2[] = new Array(n)
+  for (let i = 0; i < n; i++) {
+    const prev = centerline[(i - 1 + n) % n]
+    const next = centerline[(i + 1) % n]
+    const dx = next.x - prev.x
+    const dz = next.z - prev.z
+    const len = Math.hypot(dx, dz) || 1
+    tangents[i] = { x: dx / len, z: dz / len }
+  }
+  return { centerline, tangents }
 }
 
 /**
@@ -98,7 +138,7 @@ export function buildTrack(config: TrackConfig): TrackData {
  * (negative = left of travel direction). Closed loop, flat, facing up.
  */
 export function buildRibbon(
-  centerline: Vec2[],
+  centerline: CenterPoint[],
   tangents: Vec2[],
   fromOffset: number,
   toOffset: number,
@@ -180,12 +220,14 @@ export function nearestCenterlineIndex(track: TrackData, x: number, z: number): 
   return best
 }
 
-/** Off the road surface (curbs still count as on-track) */
-export function isOffTrack(track: TrackData, x: number, z: number): boolean {
+/** Off the road surface (curbs still count as on-track).
+ * `margin` widens the allowed band — e.g. respawn-mode tracks give a little
+ * grace beyond the curb before teleporting the car back. */
+export function isOffTrack(track: TrackData, x: number, z: number, margin = 0): boolean {
   const i = nearestCenterlineIndex(track, x, z)
   const dx = track.centerline[i].x - x
   const dz = track.centerline[i].z - z
-  const limit = track.halfWidth + track.curbWidth
+  const limit = track.halfWidth + track.curbWidth + margin
   return dx * dx + dz * dz > limit * limit
 }
 

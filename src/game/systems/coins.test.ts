@@ -1,16 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { trackConfig } from '../config'
+import { getTrack } from '../config'
 import { checkCoinPickup, coinPositions } from './coins'
 import { buildTrack } from './trackGeometry'
 
+const meadow = getTrack('meadow')
+
 describe('coinPositions', () => {
   it('places one coin per configured slot, on gate positions', () => {
-    const track = buildTrack(trackConfig)
-    const coins = coinPositions(track, trackConfig.coinSlots)
-    expect(coins).toHaveLength(trackConfig.coinSlots.length)
+    const track = buildTrack(meadow)
+    const coins = coinPositions(track, meadow.coinSlots)
+    expect(coins).toHaveLength(meadow.coinSlots.length)
     coins.forEach((c, i) => {
-      const g = track.gates[trackConfig.coinSlots[i]]
-      expect(c).toEqual({ x: g.x, z: g.z })
+      const g = track.gates[meadow.coinSlots[i]]
+      expect(c).toEqual({ x: g.x, y: g.y, z: g.z })
     })
   })
 })
