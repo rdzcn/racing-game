@@ -16,6 +16,9 @@ export interface ModelInstance {
   y?: number
   z: number
   rotationY: number
+  /** extra tilt, e.g. laying tires flat */
+  rotationX?: number
+  rotationZ?: number
   scale: number
 }
 
@@ -34,6 +37,7 @@ interface ModelPart {
  * - 'base-center': footprint center at (x,z), lowest point at y (props, trees)
  * - 'top-center':  footprint center at (x,z), TOP surface at y (road tiles —
  *   the drive surface must coincide with the physics ground plane)
+ * - 'center':      bbox center at (x,y,z) — for instances that get tilted
  */
 export function InstancedModel({
   url,
@@ -42,7 +46,7 @@ export function InstancedModel({
 }: {
   url: string
   instances: ModelInstance[]
-  anchor?: 'base-center' | 'top-center'
+  anchor?: 'base-center' | 'top-center' | 'center'
 }) {
   const { scene } = useGLTF(url)
 
@@ -56,7 +60,8 @@ export function InstancedModel({
     })
     const box = new Box3().setFromObject(scene)
     const center = box.getCenter(new Vector3())
-    const yRef = anchor === 'top-center' ? box.max.y : box.min.y
+    const yRef =
+      anchor === 'top-center' ? box.max.y : anchor === 'center' ? center.y : box.min.y
     return {
       parts: out,
       correction: new Matrix4().makeTranslation(-center.x, -yRef, -center.z),
@@ -70,7 +75,7 @@ export function InstancedModel({
     const m = new Matrix4()
     instances.forEach((inst, i) => {
       dummy.position.set(inst.x, inst.y ?? 0, inst.z)
-      dummy.rotation.set(0, inst.rotationY, 0)
+      dummy.rotation.set(inst.rotationX ?? 0, inst.rotationY, inst.rotationZ ?? 0)
       dummy.scale.setScalar(inst.scale)
       dummy.updateMatrix()
       parts.forEach((part, pi) => {

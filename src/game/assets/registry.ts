@@ -19,5 +19,12 @@ export const MODELS = {
   treeLarge: '/models/kenney/treeLarge.glb',
   treeSmall: '/models/kenney/treeSmall.glb',
   grandStand: '/models/kenney/grandStand.glb',
+  grandStandRound: '/models/kenney/grandStandRound.glb',
+  grandStandCovered: '/models/kenney/grandStandCovered.glb',
   flagCheckers: '/models/kenney/flagCheckersSmall.glb',
+  tire: '/models/kenney/debris-tire.glb',
+  pylon: '/models/kenney/pylon.glb',
+  tentLong: '/models/kenney/tentLong.glb',
+  bannerTowerGreen: '/models/kenney/bannerTowerGreen.glb',
+  bannerTowerRed: '/models/kenney/bannerTowerRed.glb',
 } as const

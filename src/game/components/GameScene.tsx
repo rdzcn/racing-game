@@ -7,6 +7,7 @@ import { buildTrack } from '../systems/trackGeometry'
 import { Car } from './Car'
 import { ChaseCamera } from './ChaseCamera'
 import { Coins } from './Coins'
+import { Decorations } from './Decorations'
 import { Effects } from './Effects'
 import { Ground } from './Ground'
 import { Lights } from './Lights'
@@ -42,6 +43,8 @@ export function GameScene() {
 
   return (
     <Suspense fallback={null}>
+      {/* distance haze — sells scale on the big tracks */}
+      <fog attach="fog" args={['#cfe0ec', 150, Math.max(450, (def.groundSize ?? 200) * 1.1)]} />
       <Lights followRef={carVisualRef} />
       <SkyAndEnvironment />
       <Effects />
@@ -58,6 +61,7 @@ export function GameScene() {
           />
         )}
         <Track data={track} />
+        <Decorations track={track} />
         <Coins carRef={carRef} track={track} />
         <Car ref={carRef} def={carDef} visualRef={carVisualRef} spawn={spawn} />
         <VehicleController carRef={carRef} track={track} />
