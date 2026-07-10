@@ -1,17 +1,67 @@
 import { MODELS } from './assets/registry'
 import { GRAND_CIRCUIT_CENTERLINE } from './assets/tracks/grandCircuitCenterline'
 
-export interface CarConfig {
-  /** Path under public/ to a .glb/.gltf model; null → procedural box-car fallback */
-  modelPath: string | null
+export interface CarDefinition {
+  id: string
+  label: string
+  /** shown on the car-select card */
+  emoji: string
+  /** Kenney car .glb — includes wheel-* nodes that Car.tsx animates */
+  modelPath: string
   scale: number
-  /** Corrective offset/rotation for models with off-center origins */
-  offset: [number, number, number]
+  /** Kenney cars face +z; game-forward is -z */
   rotationY: number
-  spawnPosition: [number, number, number]
-  /** Collider half-extents (x, y, z) in world units */
+  /** Collider half-extents (x, y, z) in world units, after scale */
   colliderHalfExtents: [number, number, number]
 }
+
+export const cars: CarDefinition[] = [
+  {
+    id: 'race',
+    label: 'Race Car',
+    emoji: '🏎️',
+    modelPath: MODELS.carRace,
+    scale: 1.6,
+    rotationY: Math.PI,
+    colliderHalfExtents: [0.95, 0.5, 2.05],
+  },
+  {
+    id: 'kart',
+    label: 'Go-Kart',
+    emoji: '🛺',
+    modelPath: MODELS.carKart,
+    scale: 1.8,
+    rotationY: Math.PI,
+    colliderHalfExtents: [0.85, 0.5, 1.3],
+  },
+  {
+    id: 'firetruck',
+    label: 'Firetruck',
+    emoji: '🚒',
+    modelPath: MODELS.carFiretruck,
+    scale: 1.4,
+    rotationY: Math.PI,
+    colliderHalfExtents: [1.05, 0.6, 2.3],
+  },
+  {
+    id: 'tractor',
+    label: 'Tractor',
+    emoji: '🚜',
+    modelPath: MODELS.carTractor,
+    scale: 1.5,
+    rotationY: Math.PI,
+    colliderHalfExtents: [1.0, 0.6, 1.5],
+  },
+]
+
+export const defaultCarId = 'race'
+
+export function getCar(id: string): CarDefinition {
+  return cars.find((c) => c.id === id) ?? cars[0]
+}
+
+/** spawn drop height above the road surface */
+export const SPAWN_HEIGHT = 2
 
 export interface VehicleTuning {
   /** N — forward drive force at full throttle */
@@ -153,13 +203,3 @@ export const cameraConfig: CameraConfig = {
   damping: 4,
 }
 
-export const carConfig: CarConfig = {
-  modelPath: MODELS.car,
-  scale: 1, // model is authored at real-world scale (~4.6m long)
-  // model's wheels sit at y=0; drop it to the collider floor
-  offset: [0, -0.5, 0],
-  // model is authored facing +x; game-forward is -z
-  rotationY: Math.PI / 2,
-  spawnPosition: [0, 2, 0],
-  colliderHalfExtents: [0.95, 0.5, 2.25],
-}

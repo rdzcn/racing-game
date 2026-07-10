@@ -1,7 +1,7 @@
 import { useRef, type RefObject } from 'react'
 import { Quaternion, Vector3 } from 'three'
 import { useBeforePhysicsStep, type RapierRigidBody } from '@react-three/rapier'
-import { carConfig, vehicleTuning } from '../config'
+import { vehicleTuning } from '../config'
 import { telemetry } from '../state/telemetry'
 import {
   driveForceScalar,
@@ -33,7 +33,7 @@ const FLIPPED_TIMEOUT = 1.5
  * Applies drive/steer/grip forces to the car body each physics step.
  * Runs in useBeforePhysicsStep (fixed timestep) so tuning is frame-rate independent.
  * `track` is optional — without it there's no off-track handling and respawn
- * falls back to carConfig.spawnPosition.
+ * falls back to the world origin.
  */
 export function useVehicleController(
   carRef: RefObject<RapierRigidBody | null>,
@@ -81,6 +81,8 @@ export function useVehicleController(
     const forwardSpeed = vel.x * forward.x + vel.z * forward.z
     const mass = body.mass()
     telemetry.speedKmh = Math.hypot(vel.x, vel.z) * 3.6
+    telemetry.forwardSpeedMs = forwardSpeed
+    telemetry.steer = input.steer
 
     // drive (impulse = force * dt)
     const f = driveForceScalar(forwardSpeed, input.throttle, vehicleTuning) * dt
@@ -122,14 +124,7 @@ export function useVehicleController(
 }
 
 function respawn(body: RapierRigidBody, track: TrackData | undefined, x: number, z: number) {
-  const pose: Pose = track
-    ? respawnPose(track, x, z)
-    : {
-        x: carConfig.spawnPosition[0],
-        y: 0,
-        z: carConfig.spawnPosition[2],
-        yaw: 0,
-      }
+  const pose: Pose = track ? respawnPose(track, x, z) : { x: 0, y: 0, z: 0, yaw: 0 }
   body.setTranslation({ x: pose.x, y: pose.y + 1.5, z: pose.z }, true)
   body.setRotation({ x: 0, y: Math.sin(pose.yaw / 2), z: 0, w: Math.cos(pose.yaw / 2) }, true)
   body.setLinvel({ x: 0, y: 0, z: 0 }, true)

@@ -14,9 +14,7 @@ Controls: arrow keys or WASD.
 
 ## Credits
 
-- Car model: ["Orion Skylark GT"](https://sketchfab.com) by **dark_igorek**,
-  licensed under [Creative Commons Attribution](https://creativecommons.org/licenses/by/4.0/).
+- Cars, track props and scenery: [Car Kit](https://kenney.nl/assets/car-kit) and
+  [Racing Kit](https://kenney.nl/assets/racing-kit) by **Kenney** (kenney.nl), CC0.
 - Track model: ["Race Track - C .001 - 3.3km"](https://sketchfab.com) by **Kristo.V**,
   licensed under [CC Attribution-NonCommercial](https://creativecommons.org/licenses/by-nc/4.0/).
-
-Both models compressed for the web with gltf-transform (Draco + WebP).

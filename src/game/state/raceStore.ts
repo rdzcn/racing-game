@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { defaultTrackId, getTrack } from '../config'
+import { defaultCarId, defaultTrackId, getTrack } from '../config'
 
 export type GameStatus = 'menu' | 'playing' | 'paused'
 
@@ -10,6 +10,7 @@ export type GameStatus = 'menu' | 'playing' | 'paused'
 export interface RaceState {
   status: GameStatus
   selectedTrackId: string
+  selectedCarId: string
   /** 0 = not started yet, then 1-based current lap */
   lap: number
   /** performance.now() when the current lap started, null before the race starts */
@@ -25,6 +26,7 @@ export interface RaceState {
   /** bumped on restart — scene components watch it to teleport the car etc. */
   resetCount: number
   selectTrack: (id: string) => void
+  selectCar: (id: string) => void
   startGame: () => void
   pause: (now: number) => void
   resume: (now: number) => void
@@ -50,6 +52,7 @@ const freshCoins = (trackId: string) => getTrack(trackId).coinSlots.map(() => fa
 export const useRaceStore = create<RaceState>()((set) => ({
   status: 'menu',
   selectedTrackId: defaultTrackId,
+  selectedCarId: defaultCarId,
   ...initialRace,
   collectedCoins: freshCoins(defaultTrackId),
   resetCount: 0,
@@ -65,6 +68,7 @@ export const useRaceStore = create<RaceState>()((set) => ({
           }
         : s,
     ),
+  selectCar: (id) => set((s) => (s.status === 'menu' ? { selectedCarId: id } : s)),
   startGame: () =>
     set((s) => ({
       ...initialRace,

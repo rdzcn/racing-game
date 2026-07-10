@@ -5,4 +5,8 @@
  */
 export const telemetry = {
   speedKmh: 0,
+  /** signed, m/s — negative when reversing (drives wheel spin) */
+  forwardSpeedMs: 0,
+  /** -1..1 steering input (drives front-wheel visuals) */
+  steer: 0,
 }

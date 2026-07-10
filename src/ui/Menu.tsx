@@ -1,5 +1,5 @@
 import { useProgress } from '@react-three/drei'
-import { tracks } from '../game/config'
+import { cars, tracks } from '../game/config'
 import { useRaceStore } from '../game/state/raceStore'
 
 export function Menu() {
@@ -7,6 +7,8 @@ export function Menu() {
   const bestLapTime = useRaceStore((s) => s.bestLapTime)
   const selectedTrackId = useRaceStore((s) => s.selectedTrackId)
   const selectTrack = useRaceStore((s) => s.selectTrack)
+  const selectedCarId = useRaceStore((s) => s.selectedCarId)
+  const selectCar = useRaceStore((s) => s.selectCar)
   const { active, progress } = useProgress()
 
   return (
@@ -32,6 +34,23 @@ export function Menu() {
         ))}
       </div>
 
+      <div className="flex gap-3">
+        {cars.map((c) => (
+          <button
+            key={c.id}
+            onClick={() => selectCar(c.id)}
+            className={`w-32 rounded-2xl border-4 p-3 text-center text-white transition hover:scale-105 ${
+              c.id === selectedCarId
+                ? 'border-amber-400 bg-amber-500/30'
+                : 'border-white/20 bg-black/30 hover:border-white/50'
+            }`}
+          >
+            <div className="text-4xl">{c.emoji}</div>
+            <div className="mt-1 text-sm font-bold">{c.label}</div>
+          </button>
+        ))}
+      </div>
+
       <button
         onClick={startGame}
         disabled={active}
@@ -47,7 +66,7 @@ export function Menu() {
       </div>
 
       <p className="absolute bottom-3 text-xs text-white/50">
-        Car: “Orion Skylark GT” by dark_igorek — CC Attribution
+        Cars &amp; props by Kenney (kenney.nl) · Grand Circuit by Kristo.V — CC BY-NC
       </p>
     </div>
   )

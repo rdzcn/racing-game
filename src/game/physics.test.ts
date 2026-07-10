@@ -1,6 +1,8 @@
 import RAPIER from '@dimforge/rapier3d-compat'
 import { beforeAll, describe, expect, it } from 'vitest'
-import { carConfig, vehicleTuning } from './config'
+import { SPAWN_HEIGHT, getCar, vehicleTuning } from './config'
+
+const car = getCar('race')
 import {
   driveForceScalar,
   lateralGripImpulse,
@@ -23,11 +25,11 @@ describe('car physics settling', () => {
       RAPIER.ColliderDesc.cuboid(100, 0.5, 100).setTranslation(0, -0.5, 0),
     )
 
-    const [sx, sy, sz] = carConfig.spawnPosition
+    const [sx, sy, sz] = [0, SPAWN_HEIGHT, 0]
     const body = world.createRigidBody(
       RAPIER.RigidBodyDesc.dynamic().setTranslation(sx, sy, sz),
     )
-    const [hx, hy, hz] = carConfig.colliderHalfExtents
+    const [hx, hy, hz] = car.colliderHalfExtents
     world.createCollider(RAPIER.ColliderDesc.cuboid(hx, hy, hz), body)
 
     for (let i = 0; i < 300; i++) world.step()
@@ -51,7 +53,7 @@ describe('vehicle controller simulation', () => {
     world.createCollider(
       RAPIER.ColliderDesc.cuboid(100, 0.5, 100).setTranslation(0, -0.5, 0),
     )
-    const [hx, hy, hz] = carConfig.colliderHalfExtents
+    const [hx, hy, hz] = car.colliderHalfExtents
     const body = world.createRigidBody(
       RAPIER.RigidBodyDesc.dynamic()
         .setTranslation(0, hy, 0)
