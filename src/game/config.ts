@@ -29,6 +29,10 @@ export interface VehicleTuning {
   grip: number
   /** 1/s — velocity-proportional drag applied when off track (grass). Caps crawl speed at engineForce/(mass*offTrackDrag) */
   offTrackDrag: number
+  /** rad/s per unit of tilt — self-righting so jumps/crests can't leave the car on its roof */
+  uprightStrength: number
+  /** 1/s — damping on pitch/roll angular velocity (kills tumble) */
+  uprightDamping: number
 }
 
 /** Where the road comes from: authored waypoints (we generate the geometry)
@@ -138,6 +142,8 @@ export const vehicleTuning: VehicleTuning = {
   steerFullEffectSpeed: 4,
   grip: 6,
   offTrackDrag: 2,
+  uprightStrength: 3,
+  uprightDamping: 4,
 }
 
 export const cameraConfig: CameraConfig = {

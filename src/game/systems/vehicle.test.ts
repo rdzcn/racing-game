@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { vehicleTuning as t } from '../config'
-import { driveForceScalar, lateralGripImpulse, offTrackDragImpulse, yawVelocity } from './vehicle'
+import {
+  driveForceScalar,
+  lateralGripImpulse,
+  offTrackDragImpulse,
+  uprightedAngvel,
+  yawVelocity,
+} from './vehicle'
 
 describe('driveForceScalar', () => {
   it('accelerates forward under max speed', () => {
@@ -41,6 +47,32 @@ describe('yawVelocity', () => {
   it('flips steering direction in reverse', () => {
     expect(Math.sign(yawVelocity(1, 10, t))).toBe(1)
     expect(Math.sign(yawVelocity(1, -10, t))).toBe(-1)
+  })
+})
+
+describe('uprightedAngvel', () => {
+  const dt = 1 / 60
+
+  it('adds no correction when already upright, only damps tumble', () => {
+    const r = uprightedAngvel({ x: 0, y: 1, z: 0 }, 2, -3, dt, t)
+    expect(Math.abs(r.x)).toBeLessThan(2)
+    expect(Math.abs(r.z)).toBeLessThan(3)
+    expect(Math.sign(r.x)).toBe(1) // damped, not reversed
+    expect(Math.sign(r.z)).toBe(-1)
+  })
+
+  it('rolls the car back when tilted sideways', () => {
+    // rolled right: up points toward +x
+    const r = uprightedAngvel({ x: 1, y: 0, z: 0 }, 0, 0, dt, t)
+    expect(r.z).toBeGreaterThan(0) // rotation about +z brings +x up to +y
+    expect(r.x).toBe(0)
+  })
+
+  it('pitches the car back when tipped forward', () => {
+    // pitched so up points toward -z
+    const r = uprightedAngvel({ x: 0, y: 0, z: -1 }, 0, 0, dt, t)
+    expect(r.x).toBeGreaterThan(0) // rotation about +x brings -z up to +y
+    expect(r.z).toBe(0)
   })
 })
 

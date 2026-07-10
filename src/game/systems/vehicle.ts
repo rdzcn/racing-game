@@ -44,6 +44,26 @@ export function yawVelocity(steer: number, forwardSpeed: number, t: VehicleTunin
 }
 
 /**
+ * Pitch/roll angular velocity that rights the car toward world-up.
+ * `up` is the body's up axis in world space (unit). Damps existing tumble and
+ * adds correction along the axis that rotates `up` toward (0,1,0) — the
+ * cross product up × worldUp = (-up.z, 0, up.x). Yaw is untouched.
+ */
+export function uprightedAngvel(
+  up: Vec3Like,
+  angvelX: number,
+  angvelZ: number,
+  dt: number,
+  t: VehicleTuning,
+): { x: number; z: number } {
+  const damp = Math.max(0, 1 - t.uprightDamping * dt)
+  return {
+    x: angvelX * damp - up.z * t.uprightStrength,
+    z: angvelZ * damp + up.x * t.uprightStrength,
+  }
+}
+
+/**
  * Velocity-proportional drag impulse for driving on grass (off-track).
  * Slows the car to a crawl without stopping it — forgiving, no hard walls.
  */

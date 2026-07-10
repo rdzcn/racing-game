@@ -7,6 +7,7 @@ import {
   driveForceScalar,
   lateralGripImpulse,
   offTrackDragImpulse,
+  uprightedAngvel,
   yawVelocity,
   type Vec3Like,
 } from '../systems/vehicle'
@@ -20,10 +21,13 @@ import {
 import { useKeyboardInput } from './useKeyboardInput'
 
 const FORWARD = new Vector3(0, 0, -1)
+const UP = new Vector3(0, 1, 0)
 /** how far beyond the curb (m) before a respawn-mode track puts you back */
 const RESPAWN_MARGIN = 2
 /** how far below the local road surface (m) counts as "fell off" */
 const FALL_THRESHOLD = 4
+/** stuck on the roof/side longer than this → respawn */
+const FLIPPED_TIMEOUT = 1.5
 
 /**
  * Applies drive/steer/grip forces to the car body each physics step.
@@ -40,7 +44,9 @@ export function useVehicleController(
   // reused across steps — no per-frame allocation
   const quat = useRef(new Quaternion()).current
   const forward = useRef(new Vector3()).current
+  const up = useRef(new Vector3()).current
   const impulse = useRef<Vec3Like>({ x: 0, y: 0, z: 0 }).current
+  const flippedFor = useRef(0)
 
   useBeforePhysicsStep((world) => {
     const body = carRef.current
@@ -60,6 +66,16 @@ export function useVehicleController(
     forward.copy(FORWARD).applyQuaternion(quat)
     forward.y = 0
     forward.normalize()
+    up.copy(UP).applyQuaternion(quat)
+
+    // flipped onto roof/side and staying there → respawn (self-righting below
+    // handles glancing hits; this catches the hopeless cases)
+    flippedFor.current = up.y < 0.15 ? flippedFor.current + dt : 0
+    if (flippedFor.current > FLIPPED_TIMEOUT) {
+      flippedFor.current = 0
+      respawn(body, track, pos.x, pos.z)
+      return
+    }
 
     const vel = body.linvel()
     const forwardSpeed = vel.x * forward.x + vel.z * forward.z
@@ -73,10 +89,12 @@ export function useVehicleController(
     impulse.z = forward.z * f
     body.applyImpulse(impulse, true)
 
-    // steer: command yaw rate directly (arcade), keep physics-owned x/z tumble
+    // steer: command yaw rate directly (arcade); pitch/roll get damped +
+    // self-righting correction so crests and jumps can't flip the car for good
     const angvel = body.angvel()
+    const upright = uprightedAngvel(up, angvel.x, angvel.z, dt, vehicleTuning)
     body.setAngvel(
-      { x: angvel.x, y: yawVelocity(input.steer, forwardSpeed, vehicleTuning), z: angvel.z },
+      { x: upright.x, y: yawVelocity(input.steer, forwardSpeed, vehicleTuning), z: upright.z },
       true,
     )
 
