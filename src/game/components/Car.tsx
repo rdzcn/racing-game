@@ -1,5 +1,5 @@
-import { Component, Suspense, forwardRef, useEffect, type ReactNode } from 'react'
-import { Mesh } from 'three'
+import { Component, Suspense, forwardRef, useEffect, type ReactNode, type Ref } from 'react'
+import { Mesh, type Group } from 'three'
 import { useGLTF } from '@react-three/drei'
 import { CuboidCollider, RigidBody, type RapierRigidBody } from '@react-three/rapier'
 import { carConfig } from '../config'
@@ -7,6 +7,8 @@ import { carConfig } from '../config'
 interface CarProps {
   /** Start pose (e.g. track start line). Defaults to carConfig.spawnPosition, facing -z. */
   spawn?: { position: [number, number, number]; yaw: number }
+  /** The car's rendered (interpolated) transform — what the camera should follow. */
+  visualRef?: Ref<Group>
 }
 
 /**
@@ -14,7 +16,7 @@ interface CarProps {
  * (or while loading / on load failure) the procedural box-car. Render-only —
  * driving forces are applied by useVehicleController via the forwarded ref.
  */
-export const Car = forwardRef<RapierRigidBody, CarProps>(function Car({ spawn }, ref) {
+export const Car = forwardRef<RapierRigidBody, CarProps>(function Car({ spawn, visualRef }, ref) {
   const [hx, hy, hz] = carConfig.colliderHalfExtents
   return (
     <RigidBody
@@ -26,15 +28,17 @@ export const Car = forwardRef<RapierRigidBody, CarProps>(function Car({ spawn },
       linearDamping={0.1}
     >
       <CuboidCollider args={[hx, hy, hz]} />
-      {carConfig.modelPath ? (
-        <ModelErrorBoundary fallback={<BoxCar />}>
-          <Suspense fallback={<BoxCar />}>
-            <CarModel path={carConfig.modelPath} />
-          </Suspense>
-        </ModelErrorBoundary>
-      ) : (
-        <BoxCar />
-      )}
+      <group ref={visualRef}>
+        {carConfig.modelPath ? (
+          <ModelErrorBoundary fallback={<BoxCar />}>
+            <Suspense fallback={<BoxCar />}>
+              <CarModel path={carConfig.modelPath} />
+            </Suspense>
+          </ModelErrorBoundary>
+        ) : (
+          <BoxCar />
+        )}
+      </group>
     </RigidBody>
   )
 })
