@@ -47,8 +47,8 @@ export function Coins({
                 color="#ffc93c"
                 metalness={0.8}
                 roughness={0.25}
-                emissive="#8a6d00"
-                emissiveIntensity={0.4}
+                emissive="#ffb300"
+                emissiveIntensity={1.2} // bright enough to catch the bloom threshold
               />
             </mesh>
           </group>
