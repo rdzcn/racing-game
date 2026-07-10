@@ -4,6 +4,7 @@ import { carConfig, trackConfig } from '../config'
 import { buildTrack } from '../systems/trackGeometry'
 import { Car } from './Car'
 import { ChaseCamera } from './ChaseCamera'
+import { Coins } from './Coins'
 import { Ground } from './Ground'
 import { Lights } from './Lights'
 import { RaceTracker } from './RaceTracker'
@@ -33,6 +34,7 @@ export function GameScene() {
       <Physics>
         <Ground />
         <Track data={track} />
+        <Coins carRef={carRef} track={track} />
         <Car ref={carRef} spawn={spawn} />
         <VehicleController carRef={carRef} track={track} />
       </Physics>

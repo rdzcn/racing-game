@@ -72,6 +72,27 @@ describe('buildTrack', () => {
     expect(max / min).toBeLessThan(2.5)
   })
 
+  it('curvature never pinches the ribbon (min radius > road+curb half-width)', () => {
+    // circumradius of each consecutive sample triple ≈ local radius of curvature.
+    // If it drops below the ribbon's outer half-width the geometry folds over itself.
+    const line = track.centerline
+    const n = line.length
+    const limit = track.halfWidth + track.curbWidth
+    let minRadius = Infinity
+    for (let i = 0; i < n; i++) {
+      const a = line[i]
+      const b = line[(i + 1) % n]
+      const c = line[(i + 2) % n]
+      const ab = Math.hypot(b.x - a.x, b.z - a.z)
+      const bc = Math.hypot(c.x - b.x, c.z - b.z)
+      const ca = Math.hypot(a.x - c.x, a.z - c.z)
+      const cross2 = Math.abs((b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x))
+      if (cross2 < 1e-9) continue // collinear = straight = infinite radius
+      minRadius = Math.min(minRadius, (ab * bc * ca) / (2 * cross2))
+    }
+    expect(minRadius).toBeGreaterThan(limit)
+  })
+
   it('start pose faces along the track', () => {
     const t = track.tangents[0]
     const yaw = track.start.yaw

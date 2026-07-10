@@ -35,15 +35,28 @@ describe('raceStore', () => {
     expect(store().lastLapTime).toBeNull()
   })
 
+  it('collectCoin counts each coin once', () => {
+    store().collectCoin(0)
+    store().collectCoin(0) // double pickup same frame — must not double count
+    store().collectCoin(2)
+    expect(store().coinsCollected).toBe(2)
+    expect(store().collectedCoins[0]).toBe(true)
+    expect(store().collectedCoins[1]).toBe(false)
+    expect(store().collectedCoins[2]).toBe(true)
+  })
+
   it('reset clears everything', () => {
     store().startLap(0)
     store().completeLap(10000)
+    store().collectCoin(1)
     store().reset()
     expect(store()).toMatchObject({
       lap: 0,
       lapStartTime: null,
       lastLapTime: null,
       bestLapTime: null,
+      coinsCollected: 0,
     })
+    expect(store().collectedCoins.every((c) => !c)).toBe(true)
   })
 })

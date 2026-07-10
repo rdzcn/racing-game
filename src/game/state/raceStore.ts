@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { trackConfig } from '../config'
 
 /**
  * Discrete race state — updated on events (lap complete), never per-frame.
@@ -12,8 +13,12 @@ export interface RaceState {
   /** ms */
   lastLapTime: number | null
   bestLapTime: number | null
+  /** one flag per coin slot; count derived once on change */
+  collectedCoins: boolean[]
+  coinsCollected: number
   startLap: (now: number) => void
   completeLap: (now: number) => void
+  collectCoin: (index: number) => void
   reset: () => void
 }
 
@@ -22,6 +27,8 @@ const initial = {
   lapStartTime: null,
   lastLapTime: null,
   bestLapTime: null,
+  collectedCoins: trackConfig.coinSlots.map(() => false),
+  coinsCollected: 0,
 }
 
 export const useRaceStore = create<RaceState>()((set) => ({
@@ -38,5 +45,11 @@ export const useRaceStore = create<RaceState>()((set) => ({
         bestLapTime: s.bestLapTime == null ? t : Math.min(s.bestLapTime, t),
       }
     }),
-  reset: () => set(initial),
+  collectCoin: (index) =>
+    set((s) => {
+      if (s.collectedCoins[index]) return s
+      const collectedCoins = s.collectedCoins.with(index, true)
+      return { collectedCoins, coinsCollected: s.coinsCollected + 1 }
+    }),
+  reset: () => set({ ...initial, collectedCoins: trackConfig.coinSlots.map(() => false) }),
 }))
