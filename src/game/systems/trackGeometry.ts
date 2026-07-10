@@ -46,6 +46,10 @@ export interface TrackData {
   halfWidth: number
   curbWidth: number
   geometry?: GeneratedTrackGeometry
+  /** Mesh tracks: smooth drive-surface trimesh built from the centerline.
+   * The model's own trimesh is unusable — box side faces, rails and
+   * duplicated strips cause ghost collisions. */
+  colliderRibbon?: RibbonGeometry
   gates: Gate[]
   start: Pose
 }
@@ -77,6 +81,18 @@ export function buildTrack(def: TrackDefinition): TrackData {
         }
       : undefined
 
+  // mesh tracks drive on a clean generated surface at road height
+  const colliderRibbon =
+    def.source.kind === 'centerline'
+      ? buildRibbon(
+          centerline,
+          tangents,
+          -halfWidth - def.curbWidth,
+          halfWidth + def.curbWidth,
+          'centerline',
+        )
+      : undefined
+
   const gates: Gate[] = []
   for (let g = 0; g < def.gateCount; g++) {
     const i = Math.round((g * n) / def.gateCount) % n
@@ -95,6 +111,7 @@ export function buildTrack(def: TrackDefinition): TrackData {
     halfWidth,
     curbWidth: def.curbWidth,
     geometry,
+    colliderRibbon,
     gates,
     start,
   }
@@ -135,14 +152,15 @@ function fromCenterlinePoints(points: [number, number, number][]) {
 
 /**
  * Strip between two signed lateral offsets from the centerline
- * (negative = left of travel direction). Closed loop, flat, facing up.
+ * (negative = left of travel direction). Closed loop, facing up.
+ * `y`: constant height, or 'centerline' to follow each sample's elevation.
  */
 export function buildRibbon(
   centerline: CenterPoint[],
   tangents: Vec2[],
   fromOffset: number,
   toOffset: number,
-  y: number,
+  y: number | 'centerline',
 ): RibbonGeometry {
   const n = centerline.length
   const positions = new Float32Array(n * 2 * 3)
@@ -153,15 +171,16 @@ export function buildRibbon(
   for (let i = 0; i < n; i++) {
     const c = centerline[i]
     const t = tangents[i]
+    const yi = y === 'centerline' ? c.y : y
     // right-hand side normal of travel direction
     const nx = -t.z
     const nz = t.x
     const j = i * 6
     positions[j] = c.x + nx * fromOffset
-    positions[j + 1] = y
+    positions[j + 1] = yi
     positions[j + 2] = c.z + nz * fromOffset
     positions[j + 3] = c.x + nx * toOffset
-    positions[j + 4] = y
+    positions[j + 4] = yi
     positions[j + 5] = c.z + nz * toOffset
     normals[j + 1] = 1
     normals[j + 4] = 1

@@ -17,7 +17,9 @@ if (!input || !output) {
 }
 
 const ROW = 10 // verts per cross-section (incl. duplicates) — verified for this asset
-const EVERY = 3 // keep every 3rd cross-section (~3.9m spacing)
+// every cross-section (~1.3m spacing) — the physics collider ribbon is built
+// from these points, so density = ride smoothness
+const EVERY = 1
 
 const doc = await new NodeIO().read(input)
 const mesh = doc.getRoot().listMeshes().find((m) => m.getName() === 'Object_0')

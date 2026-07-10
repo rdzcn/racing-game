@@ -154,7 +154,28 @@ describe('buildTrack from a mesh centerline (grand circuit)', () => {
     const line = gt.centerline
     const d = (a: number, b: number) =>
       Math.hypot(line[a].x - line[b].x, line[a].z - line[b].z)
-    expect(d(line.length - 1, 0)).toBeLessThan(d(0, 1) * 3)
+    expect(d(line.length - 1, 0)).toBeLessThan(d(0, 1) * 4)
+  })
+
+  it('builds a collider ribbon that follows road elevation', () => {
+    const ribbon = gt.colliderRibbon!
+    expect(ribbon).toBeDefined()
+    expect(ribbon.positions.length).toBe(gt.centerline.length * 2 * 3)
+    // vertex heights match their centerline sample
+    for (let i = 0; i < gt.centerline.length; i += 100) {
+      expect(ribbon.positions[i * 6 + 1]).toBeCloseTo(gt.centerline[i].y, 5)
+      expect(ribbon.positions[i * 6 + 4]).toBeCloseTo(gt.centerline[i].y, 5)
+    }
+    // spans road + curbs
+    const w = Math.hypot(
+      ribbon.positions[3] - ribbon.positions[0],
+      ribbon.positions[5] - ribbon.positions[2],
+    )
+    expect(w).toBeCloseTo(gt.def.width + 2 * gt.def.curbWidth, 5)
+  })
+
+  it('waypoint tracks have no collider ribbon (they drive on the ground plane)', () => {
+    expect(track.colliderRibbon).toBeUndefined()
   })
 })
 
