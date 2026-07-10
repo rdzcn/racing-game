@@ -2,12 +2,18 @@
  * Central asset registry — components reference these, never raw paths.
  *
  * Credits:
- * - car: "Orion Skylark GT" by dark_igorek (Sketchfab), CC Attribution.
- *   Compressed from the original via gltf-transform (draco + webp @1k).
+ * - kenney/*: Car Kit + Racing Kit by Kenney (kenney.nl), CC0 / public domain.
  * - grandTrack: "Race Track - C .001 - 3.3km" by Kristo.V (Sketchfab),
  *   CC Attribution-NonCommercial. Car prop removed, draco-compressed.
  */
 export const MODELS = {
-  car: '/models/car.glb',
   grandTrack: '/models/track_grand.glb',
+  carRace: '/models/kenney/race.glb',
+  carKart: '/models/kenney/kart-ooli.glb',
+  carFiretruck: '/models/kenney/firetruck.glb',
+  carTractor: '/models/kenney/tractor.glb',
+  treeLarge: '/models/kenney/treeLarge.glb',
+  treeSmall: '/models/kenney/treeSmall.glb',
+  grandStand: '/models/kenney/grandStand.glb',
+  flagCheckers: '/models/kenney/flagCheckersSmall.glb',
 } as const
