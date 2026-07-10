@@ -38,19 +38,25 @@ export function GameScene() {
     }),
     [track],
   )
-  const isFlatTrack = def.source.kind === 'waypoints'
+  const isFlatTrack = def.source.kind !== 'centerline'
 
   return (
     <Suspense fallback={null}>
-      <Lights />
+      <Lights followRef={carVisualRef} />
       <SkyAndEnvironment />
       <Effects />
       <ChaseCamera targetRef={carVisualRef} />
       <RaceTracker carRef={carRef} track={track} />
       {/* key remounts physics bodies/colliders cleanly on track change */}
       <Physics key={`${def.id}:${carDef.id}`} paused={status !== 'playing'}>
-        {isFlatTrack && <Ground />}
-        {isFlatTrack && <Scenery track={track} />}
+        {isFlatTrack && <Ground size={def.groundSize ?? 200} />}
+        {isFlatTrack && (
+          <Scenery
+            track={track}
+            bound={(def.groundSize ?? 200) / 2 - 10}
+            startProps={def.source.kind === 'waypoints'}
+          />
+        )}
         <Track data={track} />
         <Coins carRef={carRef} track={track} />
         <Car ref={carRef} def={carDef} visualRef={carVisualRef} spawn={spawn} />

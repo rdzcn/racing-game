@@ -2,11 +2,14 @@ import { useEffect, useMemo } from 'react'
 import { BufferAttribute, BufferGeometry, Mesh } from 'three'
 import { useGLTF } from '@react-three/drei'
 import { RigidBody, TrimeshCollider } from '@react-three/rapier'
+import { MODELS } from '../assets/registry'
 import type {
   GeneratedTrackGeometry,
   RibbonGeometry,
   TrackData,
 } from '../systems/trackGeometry'
+import type { TileModel } from '../systems/tileTrack'
+import { InstancedModel, type ModelInstance } from './InstancedModel'
 
 function toBufferGeometry(r: RibbonGeometry, colors?: Float32Array): BufferGeometry {
   const g = new BufferGeometry()
@@ -28,7 +31,55 @@ export function Track({ data }: { data: TrackData }) {
       {data.def.source.kind === 'centerline' && data.colliderRibbon && (
         <MeshTrack modelPath={data.def.source.modelPath} collider={data.colliderRibbon} />
       )}
-      <StartLine data={data} />
+      {data.tiles && data.cellSize && <TileTrack data={data} />}
+      {/* tile tracks have the roadStart gate as their start line */}
+      {!data.tiles && <StartLine data={data} />}
+    </group>
+  )
+}
+
+const TILE_MODEL_URL: Record<TileModel, string> = {
+  straight: MODELS.roadStraight,
+  cornerSmall: MODELS.roadCornerSmall,
+  cornerLarge: MODELS.roadCornerLarge,
+  start: MODELS.roadStart,
+}
+
+/** thickness of the tiles' road slab in model units (probed from the glbs) */
+const TILE_SLAB = 0.02
+
+/** Kenney road tiles, instanced per model type. Flat tiles are anchored
+ * 'top-center' so the drive surface coincides with the physics ground plane.
+ * The start gate has an arch, so its top isn't the road — anchor its base
+ * one slab-thickness below ground instead. */
+function TileTrack({ data }: { data: TrackData }) {
+  const scale = data.cellSize!
+  const byModel = useMemo(() => {
+    const groups = new Map<TileModel, ModelInstance[]>()
+    for (const t of data.tiles!) {
+      const list = groups.get(t.model) ?? []
+      list.push({
+        x: t.x,
+        y: t.model === 'start' ? -TILE_SLAB * scale : 0,
+        z: t.z,
+        rotationY: t.rotationY,
+        scale,
+      })
+      groups.set(t.model, list)
+    }
+    return [...groups.entries()]
+  }, [data, scale])
+
+  return (
+    <group>
+      {byModel.map(([model, instances]) => (
+        <InstancedModel
+          key={model}
+          url={TILE_MODEL_URL[model]}
+          instances={instances}
+          anchor={model === 'start' ? 'base-center' : 'top-center'}
+        />
+      ))}
     </group>
   )
 }

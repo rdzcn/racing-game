@@ -1,5 +1,6 @@
 import { CatmullRomCurve3, Vector3 } from 'three'
 import type { TrackDefinition } from '../config'
+import { buildTileTrack, type TilePlacement } from './tileTrack'
 
 export interface Vec2 {
   x: number
@@ -50,6 +51,10 @@ export interface TrackData {
    * The model's own trimesh is unusable — box side faces, rails and
    * duplicated strips cause ghost collisions. */
   colliderRibbon?: RibbonGeometry
+  /** Tile tracks: Kenney road-piece placements for rendering */
+  tiles?: TilePlacement[]
+  /** Tile tracks: grid cell size (also the tile model scale) */
+  cellSize?: number
   gates: Gate[]
   start: Pose
 }
@@ -63,10 +68,17 @@ const ROAD_Y = 0.02
 const CURB_Y = 0.03
 
 export function buildTrack(def: TrackDefinition): TrackData {
+  const tiles =
+    def.source.kind === 'tiles'
+      ? buildTileTrack(def.source.layout, def.source.cellSize)
+      : undefined
+
   const { centerline, tangents } =
     def.source.kind === 'waypoints'
       ? sampleWaypointSpline(def.source.waypoints, def.source.samples)
-      : fromCenterlinePoints(def.source.points)
+      : def.source.kind === 'centerline'
+        ? fromCenterlinePoints(def.source.points)
+        : withComputedTangents(tiles!.centerline)
 
   const n = centerline.length
   const halfWidth = def.width / 2
@@ -112,9 +124,26 @@ export function buildTrack(def: TrackDefinition): TrackData {
     curbWidth: def.curbWidth,
     geometry,
     colliderRibbon,
+    tiles: tiles?.placements,
+    cellSize: def.source.kind === 'tiles' ? def.source.cellSize : undefined,
     gates,
     start,
   }
+}
+
+/** finite-difference tangents for an already-sampled closed centerline */
+function withComputedTangents(centerline: CenterPoint[]) {
+  const n = centerline.length
+  const tangents: Vec2[] = new Array(n)
+  for (let i = 0; i < n; i++) {
+    const prev = centerline[(i - 1 + n) % n]
+    const next = centerline[(i + 1) % n]
+    const dx = next.x - prev.x
+    const dz = next.z - prev.z
+    const len = Math.hypot(dx, dz) || 1
+    tangents[i] = { x: dx / len, z: dz / len }
+  }
+  return { centerline, tangents }
 }
 
 /** Waypoints → closed Catmull-Rom spline, evenly resampled (flat, y = 0) */
@@ -136,18 +165,7 @@ function sampleWaypointSpline(waypoints: [number, number][], samples: number) {
 
 /** Pre-extracted mesh centerline (x, roadY, z) → samples + finite-difference tangents */
 function fromCenterlinePoints(points: [number, number, number][]) {
-  const n = points.length
-  const centerline: CenterPoint[] = points.map(([x, y, z]) => ({ x, y, z }))
-  const tangents: Vec2[] = new Array(n)
-  for (let i = 0; i < n; i++) {
-    const prev = centerline[(i - 1 + n) % n]
-    const next = centerline[(i + 1) % n]
-    const dx = next.x - prev.x
-    const dz = next.z - prev.z
-    const len = Math.hypot(dx, dz) || 1
-    tangents[i] = { x: dx / len, z: dz / len }
-  }
-  return { centerline, tangents }
+  return withComputedTangents(points.map(([x, y, z]) => ({ x, y, z })))
 }
 
 /**

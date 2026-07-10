@@ -90,6 +90,8 @@ export interface VehicleTuning {
 export type TrackSource =
   | { kind: 'waypoints'; waypoints: [number, number][]; samples: number }
   | { kind: 'centerline'; modelPath: string; points: [number, number, number][] }
+  /** Kenney road tiles laid out by a turtle program — see systems/tileTrack.ts */
+  | { kind: 'tiles'; layout: string; cellSize: number }
 
 export interface TrackDefinition {
   id: string
@@ -107,6 +109,8 @@ export interface TrackDefinition {
   killPlaneY: number
   /** drag: grass slows you down. respawn: leaving the road puts you back on it. */
   offTrackMode: 'drag' | 'respawn'
+  /** side length of the grass plane (default 200) */
+  groundSize?: number
   source: TrackSource
 }
 
@@ -166,6 +170,45 @@ export const tracks: TrackDefinition[] = [
       modelPath: MODELS.grandTrack,
       points: GRAND_CIRCUIT_CENTERLINE,
     },
+  },
+  {
+    id: 'speedway',
+    label: 'Speedway',
+    description: '~1.1 km · long straights, sweeping turns · full throttle!',
+    width: 9.8, // 0.7 × cellSize, the tiles' asphalt width
+    curbWidth: 1,
+    gateCount: 16,
+    coinSlots: [1, 3, 5, 7, 9, 11, 13, 15],
+    killPlaneY: -10,
+    offTrackMode: 'drag',
+    groundSize: 560,
+    source: { kind: 'tiles', layout: '30 L 3 L 30 L 3 L', cellSize: 14 },
+  },
+  {
+    id: 'snake',
+    label: 'Snake Run',
+    description: '~1.0 km · tight hairpins and a chicane · technical',
+    width: 9.8,
+    curbWidth: 1,
+    gateCount: 16,
+    coinSlots: [1, 3, 5, 7, 9, 11, 13, 15],
+    killPlaneY: -10,
+    offTrackMode: 'drag',
+    groundSize: 460,
+    source: { kind: 'tiles', layout: '8 r 1 l 8 l 1 r 8 r 6 r 26 r 6 r', cellSize: 14 },
+  },
+  {
+    id: 'chicane-gp',
+    label: 'Chicane GP',
+    description: '~1.2 km · fast sweepers with one nasty chicane',
+    width: 9.8,
+    curbWidth: 1,
+    gateCount: 16,
+    coinSlots: [1, 3, 5, 7, 9, 11, 13, 15],
+    killPlaneY: -10,
+    offTrackMode: 'drag',
+    groundSize: 760,
+    source: { kind: 'tiles', layout: '6 r 1 l 5 l 1 r 5 L 18 L 18 L 18 L', cellSize: 14 },
   },
 ]
 

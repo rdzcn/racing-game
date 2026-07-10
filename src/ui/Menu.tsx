@@ -17,7 +17,7 @@ export function Menu() {
         🏁 RACING
       </h1>
 
-      <div className="flex gap-4">
+      <div className="flex max-w-4xl flex-wrap justify-center gap-4">
         {tracks.map((t) => (
           <button
             key={t.id}
