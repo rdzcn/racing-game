@@ -1,4 +1,13 @@
-import { Component, Suspense, forwardRef, useEffect, useRef, type ReactNode, type Ref } from 'react'
+import {
+  Component,
+  Suspense,
+  forwardRef,
+  useEffect,
+  useMemo,
+  useRef,
+  type ReactNode,
+  type Ref,
+} from 'react'
 import { Mesh, Object3D, type Group } from 'three'
 import { useFrame } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
@@ -14,6 +23,8 @@ interface CarProps {
   spawn?: { position: [number, number, number]; yaw: number }
   /** The car's rendered (interpolated) transform — what the camera should follow. */
   visualRef?: Ref<Group>
+  /** Which telemetry slot (wheel spin/steer visuals) this car reads from */
+  playerIndex?: 0 | 1
 }
 
 /**
@@ -22,7 +33,7 @@ interface CarProps {
  * are applied by useVehicleController via the forwarded rigid-body ref.
  */
 export const Car = forwardRef<RapierRigidBody, CarProps>(function Car(
-  { def, spawn, visualRef },
+  { def, spawn, visualRef, playerIndex = 0 },
   ref,
 ) {
   const [hx, hy, hz] = def.colliderHalfExtents
@@ -39,7 +50,7 @@ export const Car = forwardRef<RapierRigidBody, CarProps>(function Car(
       <group ref={visualRef}>
         <ModelErrorBoundary fallback={<BoxCar />}>
           <Suspense fallback={<BoxCar />}>
-            <CarModel def={def} />
+            <CarModel def={def} playerIndex={playerIndex} />
           </Suspense>
         </ModelErrorBoundary>
       </group>
@@ -58,13 +69,21 @@ interface WheelRef {
   front: boolean
 }
 
-function CarModel({ def }: { def: CarDefinition }) {
+function CarModel({ def, playerIndex = 0 }: { def: CarDefinition; playerIndex?: 0 | 1 }) {
   const { scene } = useGLTF(def.modelPath)
+  // useGLTF caches the parsed scene by URL — in 2-player mode both canvases
+  // load the same model, and a three.js object can only have one parent, so
+  // inserting the cached scene directly would silently steal it out of
+  // whichever canvas mounted first. Clone per instance so each car gets its
+  // own copy of the graph (geometries/materials are still shared, which is
+  // fine — only the node graph needs to be independent).
+  const carScene = useMemo(() => scene.clone(true), [scene])
   const wheels = useRef<WheelRef[]>([])
+  const t = telemetry[playerIndex]
 
   useEffect(() => {
     const found: WheelRef[] = []
-    scene.traverse((o) => {
+    carScene.traverse((o) => {
       if (o instanceof Mesh) o.castShadow = true
       if (o.name.startsWith('wheel')) {
         o.rotation.order = 'YXZ' // steer (y) applied before spin (x)
@@ -75,21 +94,21 @@ function CarModel({ def }: { def: CarDefinition }) {
     return () => {
       wheels.current = []
     }
-  }, [scene])
+  }, [carScene])
 
   useFrame((_, dt) => {
     // model-local spin rate from world forward speed (model is scaled by def.scale).
     // Mutating three.js scene nodes inside useFrame is the idiomatic r3f pattern.
     for (const w of wheels.current) {
       // eslint-disable-next-line react-hooks/immutability
-      w.node.rotation.x += (telemetry.forwardSpeedMs / (w.radius * def.scale)) * dt
-      if (w.front) w.node.rotation.y = telemetry.steer * MAX_WHEEL_STEER
+      w.node.rotation.x += (t.forwardSpeedMs / (w.radius * def.scale)) * dt
+      if (w.front) w.node.rotation.y = t.steer * MAX_WHEEL_STEER
     }
   })
 
   return (
     <primitive
-      object={scene}
+      object={carScene}
       scale={def.scale}
       position={[0, -def.colliderHalfExtents[1], 0]}
       rotation={[0, def.rotationY, 0]}

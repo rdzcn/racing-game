@@ -3,11 +3,14 @@ import { cars, tracks } from '../game/config'
 import { useRaceStore } from '../game/state/raceStore'
 
 export function Menu() {
+  const mode = useRaceStore((s) => s.mode)
+  const setMode = useRaceStore((s) => s.setMode)
   const startGame = useRaceStore((s) => s.startGame)
-  const bestLapTime = useRaceStore((s) => s.bestLapTime)
+  const goToCarSelect = useRaceStore((s) => s.goToCarSelect)
+  const bestLapTime = useRaceStore((s) => s.players[0]?.bestLapTime ?? null)
   const selectedTrackId = useRaceStore((s) => s.selectedTrackId)
   const selectTrack = useRaceStore((s) => s.selectTrack)
-  const selectedCarId = useRaceStore((s) => s.selectedCarId)
+  const selectedCarId = useRaceStore((s) => s.players[0]?.carId ?? null)
   const selectCar = useRaceStore((s) => s.selectCar)
   const { active, progress } = useProgress()
 
@@ -16,6 +19,29 @@ export function Menu() {
       <h1 className="text-7xl font-black tracking-tight text-white [text-shadow:0_4px_16px_rgba(0,0,0,0.6)]">
         🏁 RACING
       </h1>
+
+      <div className="flex gap-3">
+        <button
+          onClick={() => setMode('single')}
+          className={`rounded-xl border-4 px-6 py-3 text-lg font-bold text-white transition hover:scale-105 ${
+            mode === 'single'
+              ? 'border-sky-400 bg-sky-500/30'
+              : 'border-white/20 bg-black/30 hover:border-white/50'
+          }`}
+        >
+          🧑 1 Player
+        </button>
+        <button
+          onClick={() => setMode('two')}
+          className={`rounded-xl border-4 px-6 py-3 text-lg font-bold text-white transition hover:scale-105 ${
+            mode === 'two'
+              ? 'border-sky-400 bg-sky-500/30'
+              : 'border-white/20 bg-black/30 hover:border-white/50'
+          }`}
+        >
+          🧑🧑 2 Players
+        </button>
+      </div>
 
       <div className="flex max-w-4xl flex-wrap justify-center gap-4">
         {tracks.map((t) => (
@@ -34,35 +60,53 @@ export function Menu() {
         ))}
       </div>
 
-      <div className="flex gap-3">
-        {cars.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => selectCar(c.id)}
-            className={`w-32 rounded-2xl border-4 p-3 text-center text-white transition hover:scale-105 ${
-              c.id === selectedCarId
-                ? 'border-amber-400 bg-amber-500/30'
-                : 'border-white/20 bg-black/30 hover:border-white/50'
-            }`}
-          >
-            <div className="text-4xl">{c.emoji}</div>
-            <div className="mt-1 text-sm font-bold">{c.label}</div>
-          </button>
-        ))}
-      </div>
+      {mode === 'single' && (
+        <div className="flex gap-3">
+          {cars.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => selectCar(0, c.id)}
+              className={`w-32 rounded-2xl border-4 p-3 text-center text-white transition hover:scale-105 ${
+                c.id === selectedCarId
+                  ? 'border-amber-400 bg-amber-500/30'
+                  : 'border-white/20 bg-black/30 hover:border-white/50'
+              }`}
+            >
+              <div className="text-4xl">{c.emoji}</div>
+              <div className="mt-1 text-sm font-bold">{c.label}</div>
+            </button>
+          ))}
+        </div>
+      )}
 
-      <button
-        onClick={startGame}
-        disabled={active}
-        className="rounded-2xl bg-emerald-500 px-14 py-5 text-4xl font-black text-white shadow-xl transition hover:scale-105 hover:bg-emerald-400 active:scale-95 disabled:scale-100 disabled:bg-gray-500"
-      >
-        {active ? `Loading… ${Math.round(progress)}%` : 'PLAY'}
-      </button>
+      {mode === 'single' ? (
+        <button
+          onClick={startGame}
+          disabled={active}
+          className="rounded-2xl bg-emerald-500 px-14 py-5 text-4xl font-black text-white shadow-xl transition hover:scale-105 hover:bg-emerald-400 active:scale-95 disabled:scale-100 disabled:bg-gray-500"
+        >
+          {active ? `Loading… ${Math.round(progress)}%` : 'PLAY'}
+        </button>
+      ) : (
+        <button
+          onClick={goToCarSelect}
+          disabled={active}
+          className="rounded-2xl bg-emerald-500 px-14 py-5 text-3xl font-black text-white shadow-xl transition hover:scale-105 hover:bg-emerald-400 active:scale-95 disabled:scale-100 disabled:bg-gray-500"
+        >
+          {active ? `Loading… ${Math.round(progress)}%` : 'Choose Cars →'}
+        </button>
+      )}
 
       <div className="text-center text-lg text-white/90">
-        <p>Drive with the arrow keys or WASD</p>
+        {mode === 'single' ? (
+          <p>Drive with the arrow keys or WASD</p>
+        ) : (
+          <p>Player 1: WASD · Player 2: Arrow keys</p>
+        )}
         <p>Esc pauses the race</p>
-        {bestLapTime != null && <p className="mt-2 font-bold text-amber-300">Can you beat your best lap?</p>}
+        {mode === 'single' && bestLapTime != null && (
+          <p className="mt-2 font-bold text-amber-300">Can you beat your best lap?</p>
+        )}
       </div>
 
       <p className="absolute bottom-3 text-xs text-white/50">

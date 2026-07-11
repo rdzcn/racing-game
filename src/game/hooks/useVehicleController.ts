@@ -12,6 +12,7 @@ import {
   type Vec3Like,
 } from '../systems/vehicle'
 import { isOffTrack, respawnPose, type Pose, type TrackData } from '../systems/trackGeometry'
+import type { ControlScheme } from '../systems/input'
 import { useKeyboardInput } from './useKeyboardInput'
 
 const FORWARD = new Vector3(0, 0, -1)
@@ -23,13 +24,16 @@ const FLIPPED_TIMEOUT = 1.5
  * Applies drive/steer/grip forces to the car body each physics step.
  * Runs in useBeforePhysicsStep (fixed timestep) so tuning is frame-rate independent.
  * `track` is optional — without it there's no off-track handling and respawn
- * falls back to the world origin.
+ * falls back to the world origin. `playerIndex` selects which keyboard scheme
+ * (via `scheme`) drives this car and which telemetry slot it writes to.
  */
 export function useVehicleController(
   carRef: RefObject<RapierRigidBody | null>,
   track?: TrackData,
+  scheme: ControlScheme = 'both',
+  playerIndex: 0 | 1 = 0,
 ) {
-  const input = useKeyboardInput()
+  const input = useKeyboardInput(scheme)
 
   // reused across steps — no per-frame allocation
   const quat = useRef(new Quaternion()).current
@@ -70,9 +74,10 @@ export function useVehicleController(
     const vel = body.linvel()
     const forwardSpeed = vel.x * forward.x + vel.z * forward.z
     const mass = body.mass()
-    telemetry.speedKmh = Math.hypot(vel.x, vel.z) * 3.6
-    telemetry.forwardSpeedMs = forwardSpeed
-    telemetry.steer = input.steer
+    const t = telemetry[playerIndex]
+    t.speedKmh = Math.hypot(vel.x, vel.z) * 3.6
+    t.forwardSpeedMs = forwardSpeed
+    t.steer = input.steer
 
     // drive (impulse = force * dt)
     const f = driveForceScalar(forwardSpeed, input.throttle, vehicleTuning) * dt

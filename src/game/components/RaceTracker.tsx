@@ -10,9 +10,11 @@ import type { TrackData } from '../systems/trackGeometry'
 export function RaceTracker({
   carRef,
   track,
+  playerIndex = 0,
 }: {
   carRef: RefObject<RapierRigidBody | null>
   track: TrackData
+  playerIndex?: 0 | 1
 }) {
   const progress = useRef(createLapProgress())
   const startLap = useRaceStore((s) => s.startLap)
@@ -33,8 +35,8 @@ export function RaceTracker({
     const p = body.translation()
     const v = body.linvel()
     const event = processGateCrossing(progress.current, track.gates, p.x, p.z, v.x, v.z, radius)
-    if (event === 'started') startLap(performance.now())
-    else if (event === 'lap') completeLap(performance.now())
+    if (event === 'started') startLap(playerIndex, performance.now())
+    else if (event === 'lap') completeLap(playerIndex, performance.now())
   })
 
   return null

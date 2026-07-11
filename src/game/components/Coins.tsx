@@ -14,9 +14,11 @@ const COIN_Y = 1.1
 export function Coins({
   carRef,
   track,
+  playerIndex = 0,
 }: {
   carRef: RefObject<RapierRigidBody | null>
   track: TrackData
+  playerIndex?: 0 | 1
 }) {
   const positions = useMemo(() => coinPositions(track, track.def.coinSlots), [track])
   const collected = useRaceStore((s) => s.collectedCoins)
@@ -32,7 +34,7 @@ export function Coins({
     if (!body) return
     const p = body.translation()
     const hit = checkCoinPickup(positions, collected, p.x, p.z, PICKUP_RADIUS)
-    if (hit >= 0) collectCoin(hit)
+    if (hit >= 0) collectCoin(playerIndex, hit)
   })
 
   return (
