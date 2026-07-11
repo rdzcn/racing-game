@@ -1,49 +1,72 @@
 import { describe, expect, it } from 'vitest'
-import { STARTER_GP_CELLS } from '../assets/tracks/starterGP'
+import { getTrack } from '../config'
 import { buildGridTrack, type GridCellData } from './gridTrack'
+import { buildGridWorld } from './gridWorld'
+import { createLapProgress, processGateCrossing } from './raceRules'
+import { buildTrack } from './trackGeometry'
 
 const C = 16
 
-describe('buildGridTrack on the imported Starter Kit layout', () => {
-  const { placements, centerline } = buildGridTrack(STARTER_GP_CELLS, C)
+describe('buildGridWorld + buildGridTrack (Forest Kart Loop)', () => {
+  const def = getTrack('starter-gp')
+  const cells = (def.source as { kind: 'grid'; cells: GridCellData[] }).cells
+  const { placements, centerline } = buildGridTrack(cells, C)
 
-  it('resolves orientations into one closed road loop', () => {
-    const roadCount = STARTER_GP_CELLS.filter(([, , m]) =>
-      ['straight', 'corner', 'finish', 'ramp'].includes(m),
-    ).length
-    expect(roadCount).toBe(16)
-    expect(centerline.length).toBeGreaterThan(50)
+  it('generates a closed ~0.6km loop with exactly one finish gate', () => {
+    expect(cells.filter(([, , m]) => m === 'finish')).toHaveLength(1)
+    let len = 0
+    for (let i = 0; i < centerline.length; i++) {
+      const a = centerline[i]
+      const b = centerline[(i + 1) % centerline.length]
+      len += Math.hypot(b.x - a.x, b.z - a.z)
+    }
+    expect(len).toBeGreaterThan(480) // ≈30s+ of driving
+    expect(len).toBeLessThan(700)
   })
 
   it('centerline is continuous including the wrap-around', () => {
     for (let i = 0; i < centerline.length; i++) {
       const a = centerline[i]
       const b = centerline[(i + 1) % centerline.length]
-      expect(
-        Math.hypot(b.x - a.x, b.z - a.z),
-        `jump between sample ${i} and ${i + 1}`,
-      ).toBeLessThan(6)
+      expect(Math.hypot(b.x - a.x, b.z - a.z), `jump at sample ${i}`).toBeLessThan(6)
     }
   })
 
-  it('keeps every decoration cell as a placement', () => {
-    expect(placements).toHaveLength(STARTER_GP_CELLS.length)
-    expect(placements.filter((p) => p.model === 'forest').length).toBeGreaterThan(20)
+  it('fills the world with decoration tiles around the road', () => {
+    expect(placements.filter((p) => p.model === 'forest').length).toBeGreaterThan(30)
+    expect(placements.filter((p) => p.model === 'tents').length).toBeGreaterThan(0)
   })
 
-  it('is centered on the origin', () => {
-    const xs = centerline.map((p) => p.x)
-    const zs = centerline.map((p) => p.z)
-    expect((Math.min(...xs) + Math.max(...xs)) / 2).toBeCloseTo(0, 5)
-    expect((Math.min(...zs) + Math.max(...zs)) / 2).toBeCloseTo(0, 5)
+  it('is deterministic', () => {
+    expect(buildGridWorld('3 r 1 l 3 l 1 r 3 r 3 r 11 r 3 r')).toEqual(cells)
   })
 
-  it('centerline stays within the decorated world', () => {
-    const half = (Math.sqrt(placements.length) / 2 + 1) * C
-    for (const p of centerline) {
-      expect(Math.abs(p.x)).toBeLessThan(half * 2)
-      expect(Math.abs(p.z)).toBeLessThan(half * 2)
+  it('lap counting works: driving the loop yields started + gates + lap', () => {
+    const track = buildTrack(def)
+    const radius = track.halfWidth + track.curbWidth
+    const p = createLapProgress()
+    const events: string[] = []
+    const n = track.centerline.length
+    for (let s = 0; s <= n + 5; s++) {
+      const i = s % n
+      const c = track.centerline[i]
+      const t = track.tangents[i]
+      const ev = processGateCrossing(p, track.gates, c.x, c.z, t.x * 10, t.z * 10, radius)
+      if (ev !== 'none') events.push(ev)
     }
+    expect(events[0]).toBe('started')
+    expect(events.filter((e) => e === 'lap')).toHaveLength(1)
+    expect(events.filter((e) => e === 'gate')).toHaveLength(def.gateCount - 1)
+  })
+})
+
+describe('buildGridWorld validation', () => {
+  it('rejects non-closing layouts', () => {
+    expect(() => buildGridWorld('3 l 3 l 3 l 2 l')).toThrow(/does not close|overlap/)
+  })
+
+  it('rejects overlapping layouts', () => {
+    expect(() => buildGridWorld('4 l 2 l 2 l 4 l 2 l 2 l')).toThrow(/overlap|does not close/)
   })
 })
 

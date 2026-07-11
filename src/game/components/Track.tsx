@@ -45,11 +45,10 @@ const GRID_MODEL_URL: Record<GridModel, string> = {
   tents: MODELS.starterTents,
 }
 
-/** Godot's mesh library bakes some tiles rotated relative to their glb —
- * connector logic runs in library space, rendering compensates here. */
-const GRID_MODEL_ROT_OFFSET: Partial<Record<GridModel, number>> = {
-  finish: Math.PI / 2,
-}
+/** Per-model render rotation offsets relative to library space (the finish
+ * gate's drive-through direction matches the straights, so none needed —
+ * flip finish to ±π/2 here if a future kit disagrees). */
+const GRID_MODEL_ROT_OFFSET: Partial<Record<GridModel, number>> = {}
 
 /** Starter-kit world: every cell (road + baked scenery) instanced per model.
  * Models are center-origin with ground at y=0 — drive surface = ground plane. */

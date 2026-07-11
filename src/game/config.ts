@@ -1,6 +1,6 @@
 import { MODELS } from './assets/registry'
-import { STARTER_GP_CELLS } from './assets/tracks/starterGP'
 import type { GridCellData } from './systems/gridTrack'
+import { buildGridWorld } from './systems/gridWorld'
 
 export interface CarDefinition {
   id: string
@@ -250,15 +250,21 @@ export const tracks: TrackDefinition[] = [
   {
     id: 'starter-gp',
     label: 'Forest Kart Loop',
-    description: "~0.3 km · Kenney's starter-kit track · cozy forest world",
+    description: '~0.6 km · cozy forest world in the starter-kit style',
     width: 9.6, // 0.6 × cellSize, the starter tiles' asphalt width
     curbWidth: 0.8,
-    gateCount: 8,
-    coinSlots: [1, 3, 5, 7],
+    gateCount: 12,
+    coinSlots: [1, 3, 5, 7, 9, 11],
     killPlaneY: -10,
-    groundSize: 320,
+    groundSize: 420,
     dressing: false, // the world ships its own baked scenery tiles
-    source: { kind: 'grid', cells: STARTER_GP_CELLS, cellSize: 16 },
+    source: {
+      kind: 'grid',
+      // extended layout in the imported track's spirit: chicane on the top
+      // straight, long back straight through the forest (~36 tiles ≈ 30-35s)
+      cells: buildGridWorld('3 r 1 l 3 l 1 r 3 r 3 r 11 r 3 r'),
+      cellSize: 16,
+    },
   },
 ]
 
