@@ -11,21 +11,11 @@ import {
   yawVelocity,
   type Vec3Like,
 } from '../systems/vehicle'
-import {
-  isOffTrack,
-  nearestCenterlineIndex,
-  respawnPose,
-  type Pose,
-  type TrackData,
-} from '../systems/trackGeometry'
+import { isOffTrack, respawnPose, type Pose, type TrackData } from '../systems/trackGeometry'
 import { useKeyboardInput } from './useKeyboardInput'
 
 const FORWARD = new Vector3(0, 0, -1)
 const UP = new Vector3(0, 1, 0)
-/** how far beyond the curb (m) before a respawn-mode track puts you back */
-const RESPAWN_MARGIN = 2
-/** how far below the local road surface (m) counts as "fell off" */
-const FALL_THRESHOLD = 4
 /** stuck on the roof/side longer than this → respawn */
 const FLIPPED_TIMEOUT = 1.5
 
@@ -104,21 +94,10 @@ export function useVehicleController(
     lateralGripImpulse(vel, forward, mass, dt, vehicleTuning, impulse)
     body.applyImpulse(impulse, true)
 
-    if (!track) return
-    if (track.def.offTrackMode === 'drag') {
-      // grass is slow (but never a dead end)
-      if (isOffTrack(track, pos.x, pos.z)) {
-        offTrackDragImpulse(vel, mass, dt, vehicleTuning, impulse)
-        body.applyImpulse(impulse, true)
-      }
-    } else {
-      // respawn-mode (mesh tracks with drop-offs): leaving the road or
-      // falling below it puts you gently back on the centerline
-      const i = nearestCenterlineIndex(track, pos.x, pos.z)
-      const fellBelowRoad = pos.y < track.centerline[i].y - FALL_THRESHOLD
-      if (fellBelowRoad || isOffTrack(track, pos.x, pos.z, RESPAWN_MARGIN)) {
-        respawn(body, track, pos.x, pos.z)
-      }
+    // grass is slow (but never a dead end)
+    if (track && isOffTrack(track, pos.x, pos.z)) {
+      offTrackDragImpulse(vel, mass, dt, vehicleTuning, impulse)
+      body.applyImpulse(impulse, true)
     }
   })
 }

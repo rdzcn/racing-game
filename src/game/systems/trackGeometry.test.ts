@@ -123,62 +123,6 @@ describe('off-track detection', () => {
   })
 })
 
-describe('buildTrack from a mesh centerline (grand circuit)', () => {
-  const grand = getTrack('grand')
-  const gt = buildTrack(grand)
-
-  it('passes centerline points through with heights and no generated geometry', () => {
-    expect(gt.geometry).toBeUndefined()
-    expect(gt.centerline.length).toBeGreaterThan(500)
-    // real elevation data survived extraction
-    const ys = gt.centerline.map((c) => c.y)
-    expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThan(10)
-  })
-
-  it('tangents are unit length and gates carry road height', () => {
-    for (const t of gt.tangents) expect(Math.hypot(t.x, t.z)).toBeCloseTo(1, 5)
-    expect(gt.gates).toHaveLength(grand.gateCount)
-    const gateWithHeight = gt.gates.find((g) => Math.abs(g.y) > 1)
-    expect(gateWithHeight).toBeDefined()
-  })
-
-  it('respawnPose returns road height, not 0', () => {
-    // find a sample with meaningful elevation and query from beside it
-    const i = gt.centerline.findIndex((c) => c.y > 5)
-    const c = gt.centerline[i]
-    const pose = respawnPose(gt, c.x + 10, c.z)
-    expect(pose.y).toBeGreaterThan(1)
-  })
-
-  it('closed loop: wrap-around spacing matches sample spacing', () => {
-    const line = gt.centerline
-    const d = (a: number, b: number) =>
-      Math.hypot(line[a].x - line[b].x, line[a].z - line[b].z)
-    expect(d(line.length - 1, 0)).toBeLessThan(d(0, 1) * 4)
-  })
-
-  it('builds a collider ribbon that follows road elevation', () => {
-    const ribbon = gt.colliderRibbon!
-    expect(ribbon).toBeDefined()
-    expect(ribbon.positions.length).toBe(gt.centerline.length * 2 * 3)
-    // vertex heights match their centerline sample
-    for (let i = 0; i < gt.centerline.length; i += 100) {
-      expect(ribbon.positions[i * 6 + 1]).toBeCloseTo(gt.centerline[i].y, 5)
-      expect(ribbon.positions[i * 6 + 4]).toBeCloseTo(gt.centerline[i].y, 5)
-    }
-    // spans road + curbs
-    const w = Math.hypot(
-      ribbon.positions[3] - ribbon.positions[0],
-      ribbon.positions[5] - ribbon.positions[2],
-    )
-    expect(w).toBeCloseTo(gt.def.width + 2 * gt.def.curbWidth, 5)
-  })
-
-  it('waypoint tracks have no collider ribbon (they drive on the ground plane)', () => {
-    expect(track.colliderRibbon).toBeUndefined()
-  })
-})
-
 describe('respawnPose', () => {
   it('returns the nearest centerline point facing along the track', () => {
     const c = track.centerline[50]

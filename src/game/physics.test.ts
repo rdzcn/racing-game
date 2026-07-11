@@ -133,6 +133,30 @@ describe('vehicle controller simulation', () => {
     expect(grassSpeed).toBeLessThan(vehicleTuning.maxSpeed * 0.5)
   })
 
+  it('bounces off a tire barrier back toward the road', () => {
+    const { world, body } = makeCarWorld()
+    // barrier wall like TireBarriers: thin bouncy cuboid 10m ahead (-z), across the path
+    const wall = RAPIER.ColliderDesc.cuboid(6, 0.7, 0.45)
+      .setTranslation(0, 0.7, -10)
+      .setRestitution(0.55)
+      .setFriction(0.2)
+    world.createCollider(wall)
+
+    stepWithInput(world, body, 1, 0, 60) // accelerate toward it (~1s)
+    // approach + impact with throttle released, tracking the rebound
+    let maxBackVel = -Infinity
+    let minZ = Infinity
+    for (let i = 0; i < 120; i++) {
+      stepWithInput(world, body, 0, 0, 1)
+      maxBackVel = Math.max(maxBackVel, body.linvel().z)
+      minZ = Math.min(minZ, body.translation().z)
+    }
+    // did not pass through the wall
+    expect(minZ).toBeGreaterThan(-10)
+    // bounced: at some point clearly moving back away from the wall (+z)
+    expect(maxBackVel).toBeGreaterThan(2)
+  })
+
   it('coasts to a near-stop when throttle is released', () => {
     const { world, body } = makeCarWorld()
     stepWithInput(world, body, 1, 0, 120)

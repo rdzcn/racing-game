@@ -1,5 +1,4 @@
 import { MODELS } from './assets/registry'
-import { GRAND_CIRCUIT_CENTERLINE } from './assets/tracks/grandCircuitCenterline'
 
 export interface CarDefinition {
   id: string
@@ -86,10 +85,9 @@ export interface VehicleTuning {
 }
 
 /** Where the road comes from: authored waypoints (we generate the geometry)
- * or a mesh model with a pre-extracted centerline (see scripts/). */
+ * or Kenney road tiles laid out on a grid. */
 export type TrackSource =
   | { kind: 'waypoints'; waypoints: [number, number][]; samples: number }
-  | { kind: 'centerline'; modelPath: string; points: [number, number, number][] }
   /** Kenney road tiles laid out by a turtle program — see systems/tileTrack.ts */
   | { kind: 'tiles'; layout: string; cellSize: number }
 
@@ -107,8 +105,6 @@ export interface TrackDefinition {
   coinSlots: number[]
   /** Car falls below this y → respawn (kid-safety: no lost-forever states) */
   killPlaneY: number
-  /** drag: grass slows you down. respawn: leaving the road puts you back on it. */
-  offTrackMode: 'drag' | 'respawn'
   /** side length of the grass plane (default 200) */
   groundSize?: number
   source: TrackSource
@@ -152,24 +148,7 @@ export const tracks: TrackDefinition[] = [
     gateCount: 12,
     coinSlots: [1, 3, 5, 7, 9, 11],
     killPlaneY: -10,
-    offTrackMode: 'drag',
     source: { kind: 'waypoints', waypoints: meadowWaypoints, samples: 384 },
-  },
-  {
-    id: 'grand',
-    label: 'Grand Circuit',
-    description: '3.3 km · hills & long straights · stay on the road!',
-    width: 9,
-    curbWidth: 0.8,
-    gateCount: 24,
-    coinSlots: [2, 5, 8, 11, 14, 17, 20, 23],
-    killPlaneY: -30,
-    offTrackMode: 'respawn',
-    source: {
-      kind: 'centerline',
-      modelPath: MODELS.grandTrack,
-      points: GRAND_CIRCUIT_CENTERLINE,
-    },
   },
   {
     id: 'speedway',
@@ -180,7 +159,6 @@ export const tracks: TrackDefinition[] = [
     gateCount: 16,
     coinSlots: [1, 3, 5, 7, 9, 11, 13, 15],
     killPlaneY: -10,
-    offTrackMode: 'drag',
     groundSize: 560,
     source: { kind: 'tiles', layout: '30 L 3 L 30 L 3 L', cellSize: 14 },
   },
@@ -193,7 +171,6 @@ export const tracks: TrackDefinition[] = [
     gateCount: 16,
     coinSlots: [1, 3, 5, 7, 9, 11, 13, 15],
     killPlaneY: -10,
-    offTrackMode: 'drag',
     groundSize: 460,
     source: { kind: 'tiles', layout: '8 r 1 l 8 l 1 r 8 r 6 r 26 r 6 r', cellSize: 14 },
   },
@@ -206,7 +183,6 @@ export const tracks: TrackDefinition[] = [
     gateCount: 16,
     coinSlots: [1, 3, 5, 7, 9, 11, 13, 15],
     killPlaneY: -10,
-    offTrackMode: 'drag',
     groundSize: 760,
     source: { kind: 'tiles', layout: '6 r 1 l 5 l 1 r 5 L 18 L 18 L 18 L', cellSize: 14 },
   },

@@ -3,6 +3,7 @@ import type { Group } from 'three'
 import { Physics, type RapierRigidBody } from '@react-three/rapier'
 import { SPAWN_HEIGHT, getCar, getTrack } from '../config'
 import { useRaceStore } from '../state/raceStore'
+import { generateDressing } from '../systems/decorations'
 import { buildTrack } from '../systems/trackGeometry'
 import { Car } from './Car'
 import { ChaseCamera } from './ChaseCamera'
@@ -15,6 +16,7 @@ import { RaceTracker } from './RaceTracker'
 import { ResetHandler } from './ResetHandler'
 import { Scenery } from './Scenery'
 import { SkyAndEnvironment } from './SkyAndEnvironment'
+import { TireBarriers } from './TireBarriers'
 import { Track } from './Track'
 import { VehicleController } from './VehicleController'
 
@@ -28,6 +30,7 @@ export function GameScene() {
   const def = getTrack(trackId)
   const carDef = getCar(carId)
   const track = useMemo(() => buildTrack(def), [def])
+  const dressing = useMemo(() => generateDressing(track), [track])
   const spawn = useMemo(
     () => ({
       position: [track.start.x, track.start.y + SPAWN_HEIGHT, track.start.z] as [
@@ -39,8 +42,6 @@ export function GameScene() {
     }),
     [track],
   )
-  const isFlatTrack = def.source.kind !== 'centerline'
-
   return (
     <Suspense fallback={null}>
       {/* distance haze — sells scale on the big tracks */}
@@ -52,16 +53,15 @@ export function GameScene() {
       <RaceTracker carRef={carRef} track={track} />
       {/* key remounts physics bodies/colliders cleanly on track change */}
       <Physics key={`${def.id}:${carDef.id}`} paused={status !== 'playing'}>
-        {isFlatTrack && <Ground size={def.groundSize ?? 200} />}
-        {isFlatTrack && (
-          <Scenery
-            track={track}
-            bound={(def.groundSize ?? 200) / 2 - 10}
-            startProps={def.source.kind === 'waypoints'}
-          />
-        )}
+        <Ground size={def.groundSize ?? 200} />
+        <Scenery
+          track={track}
+          bound={(def.groundSize ?? 200) / 2 - 10}
+          startProps={def.source.kind === 'waypoints'}
+        />
         <Track data={track} />
-        <Decorations track={track} />
+        <Decorations decorations={dressing.decorations} />
+        <TireBarriers barriers={dressing.barriers} />
         <Coins carRef={carRef} track={track} />
         <Car ref={carRef} def={carDef} visualRef={carVisualRef} spawn={spawn} />
         <VehicleController carRef={carRef} track={track} />

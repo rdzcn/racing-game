@@ -1,13 +1,16 @@
 import { mulberry32 } from './scenery'
-import type { TrackData } from './trackGeometry'
+import { nearestCenterlineIndex, type TrackData } from './trackGeometry'
 
 /**
  * Automatic track dressing derived from the centerline:
- * - corners get tire walls (and pylons at their entry) on the OUTSIDE
+ * - corners get tire walls on the OUTSIDE (with physics barrier segments so
+ *   hitting them bounces the car back onto the road)
  * - long straights get grandstands/tents on the outside of the loop
  * - the start gets banner towers
- * Deterministic for a given track. Everything is placed with clearance so it
- * never encroaches on the road.
+ *
+ * Every placement is validated against the WHOLE centerline with a per-model
+ * clearance radius — a prop proposed next to one straight can never end up
+ * on a different piece of road (chicanes, parallel hairpins, ...).
  */
 export type DecorationModel =
   | 'tire'
@@ -30,12 +33,41 @@ export interface Decoration {
   layFlat?: boolean
 }
 
+/** invisible physics wall behind a run of tires */
+export interface BarrierSegment {
+  /** segment midpoint */
+  x: number
+  z: number
+  /** yaw of the segment direction */
+  rotationY: number
+  length: number
+}
+
+export interface TrackDressing {
+  decorations: Decoration[]
+  barriers: BarrierSegment[]
+}
+
+/** how much room (m) each model needs beyond the road edge to be allowed */
+const CLEARANCE: Record<DecorationModel, number> = {
+  tire: 0.5,
+  pylon: 0.2,
+  grandStand: 6.5,
+  grandStandRound: 7.5,
+  grandStandCovered: 6.5,
+  tentLong: 8.5,
+  bannerTowerGreen: 1.2,
+  bannerTowerRed: 1.2,
+}
+
+const CORNER_THRESHOLD = 0.18
+const TIRE_SPACING = 1.6
+
 /** signed turn rate at sample i over a window (positive = turning left) */
 function turnRate(track: TrackData, i: number, window: number): number {
   const n = track.tangents.length
   const a = track.tangents[i]
   const b = track.tangents[(i + window) % n]
-  // z-component of 2D cross(a, b); sign flips because our N is -z
   return -(a.x * b.z - a.z * b.x)
 }
 
@@ -51,13 +83,22 @@ function loopOrientation(track: TrackData): number {
   return area > 0 ? 1 : -1
 }
 
-const CORNER_THRESHOLD = 0.18
+/** distance from (x,z) to the nearest centerline sample */
+function roadDistance(track: TrackData, x: number, z: number): number {
+  const i = nearestCenterlineIndex(track, x, z)
+  const c = track.centerline[i]
+  return Math.hypot(c.x - x, c.z - z)
+}
 
-export function generateDecorations(track: TrackData): Decoration[] {
+export function generateDressing(track: TrackData): TrackDressing {
   const rand = mulberry32(20260710)
-  const out: Decoration[] = []
+  const decorations: Decoration[] = []
+  const barriers: BarrierSegment[] = []
   const n = track.centerline.length
   const roadEdge = track.halfWidth + track.curbWidth
+
+  const allowed = (model: DecorationModel, x: number, z: number) =>
+    roadDistance(track, x, z) >= roadEdge + CLEARANCE[model]
 
   // window sized to ~4m of arc so corner detection is sample-density independent
   let length = 0
@@ -68,7 +109,6 @@ export function generateDecorations(track: TrackData): Decoration[] {
   }
   const window = Math.max(2, Math.round(4 / (length / n)))
 
-  // --- corner zones → tire walls on the outside ---------------------------
   const isCorner: boolean[] = new Array(n)
   const turnSign: number[] = new Array(n)
   for (let i = 0; i < n; i++) {
@@ -77,11 +117,14 @@ export function generateDecorations(track: TrackData): Decoration[] {
     turnSign[i] = Math.sign(t)
   }
 
-  const TIRE_SPACING = 1.6 // meters along the edge
+  // --- corner zones → tire walls + physics barriers on the outside ---------
+  const tireOffset = roadEdge + 1.2
   let distSinceTire = TIRE_SPACING
+  let prevTire: { x: number; z: number } | null = null
   for (let i = 0; i < n; i++) {
     if (!isCorner[i]) {
       distSinceTire = TIRE_SPACING
+      prevTire = null
       continue
     }
     const a = track.centerline[i]
@@ -93,18 +136,37 @@ export function generateDecorations(track: TrackData): Decoration[] {
     const t = track.tangents[i]
     // outside of the turn: right of travel when turning left, and vice versa
     const side = -turnSign[i]
-    const nx = t.z * side
-    const nz = -t.x * side
-    const off = roadEdge + 1.2
-    out.push({
+    const x = a.x + t.z * side * tireOffset
+    const z = a.z - t.x * side * tireOffset
+    if (!allowed('tire', x, z)) {
+      prevTire = null // break the barrier chain across disallowed spots
+      continue
+    }
+    decorations.push({
       model: 'tire',
-      x: a.x + nx * off,
+      x,
       y: a.y,
-      z: a.z + nz * off,
+      z,
       rotationY: rand() * Math.PI,
       scale: 2.2,
       layFlat: true,
     })
+    if (prevTire) {
+      const dx = x - prevTire.x
+      const dz = z - prevTire.z
+      const segLen = Math.hypot(dx, dz)
+      // note: on the outside of an arc, tire spacing expands by (r+offset)/r —
+      // the threshold must absorb that or barrier chains fall apart
+      if (segLen < TIRE_SPACING * 4) {
+        barriers.push({
+          x: (x + prevTire.x) / 2,
+          z: (z + prevTire.z) / 2,
+          rotationY: Math.atan2(-dz, dx),
+          length: segLen + 0.6, // slight overlap, no gaps between segments
+        })
+      }
+    }
+    prevTire = { x, z }
   }
 
   // pylons flanking each corner-zone entry
@@ -114,19 +176,16 @@ export function generateDecorations(track: TrackData): Decoration[] {
     const a = track.centerline[i]
     const t = track.tangents[i]
     for (const side of [1, -1]) {
-      out.push({
-        model: 'pylon',
-        x: a.x + t.z * side * (roadEdge + 0.6),
-        y: a.y,
-        z: a.z - t.x * side * (roadEdge + 0.6),
-        rotationY: 0,
-        scale: 6,
-      })
+      const x = a.x + t.z * side * (roadEdge + 0.6)
+      const z = a.z - t.x * side * (roadEdge + 0.6)
+      if (allowed('pylon', x, z)) {
+        decorations.push({ model: 'pylon', x, y: a.y, z, rotationY: 0, scale: 6 })
+      }
     }
   }
 
-  // --- straights → grandstands / tents on the outside of the loop ---------
-  const outward = -loopOrientation(track) // side away from the loop interior
+  // --- straights → grandstands / tents on the outside of the loop ----------
+  const outward = -loopOrientation(track)
   const stands: DecorationModel[] = ['grandStand', 'grandStandRound', 'grandStandCovered', 'tentLong']
   let standIdx = 0
   let distSinceStand = 0
@@ -135,43 +194,43 @@ export function generateDecorations(track: TrackData): Decoration[] {
     const b = track.centerline[(i + 1) % n]
     distSinceStand += Math.hypot(b.x - a.x, b.z - a.z)
     if (isCorner[i] || distSinceStand < 55) continue
-    // require a stretch of straight around the spot
     const ahead = Math.round((n / 100) * 3)
     if (isCorner[(i + ahead) % n] || isCorner[(i - ahead + n) % n]) continue
-    distSinceStand = 0
 
     const t = track.tangents[i]
     const nx = t.z * outward
     const nz = -t.x * outward
     const off = roadEdge + 9
-    const model = stands[standIdx++ % stands.length]
-    out.push({
+    const model = stands[standIdx % stands.length]
+    const x = a.x + nx * off
+    const z = a.z + nz * off
+    if (!allowed(model, x, z)) continue
+    distSinceStand = 0
+    standIdx++
+    decorations.push({
       model,
-      x: a.x + nx * off,
+      x,
       y: a.y,
-      // stands face the track: rotate their front toward the road
-      z: a.z + nz * off,
+      z,
+      // stands face the track
       rotationY: Math.atan2(-nx, -nz) + Math.PI,
       scale: 8,
     })
   }
 
-  // --- start area → banner towers both sides ------------------------------
+  // --- start area → banner towers both sides -------------------------------
   const t0 = track.tangents[0]
   const s = track.start
   for (const [side, model] of [
     [1, 'bannerTowerGreen'],
     [-1, 'bannerTowerRed'],
   ] as const) {
-    out.push({
-      model,
-      x: s.x + t0.z * side * (roadEdge + 2.5) + t0.x * 12,
-      y: s.y,
-      z: s.z - t0.x * side * (roadEdge + 2.5) + t0.z * 12,
-      rotationY: s.yaw,
-      scale: 7,
-    })
+    const x = s.x + t0.z * side * (roadEdge + 2.5) + t0.x * 12
+    const z = s.z - t0.x * side * (roadEdge + 2.5) + t0.z * 12
+    if (allowed(model, x, z)) {
+      decorations.push({ model, x, y: s.y, z, rotationY: s.yaw, scale: 7 })
+    }
   }
 
-  return out
+  return { decorations, barriers }
 }

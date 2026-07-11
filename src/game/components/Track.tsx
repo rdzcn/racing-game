@@ -1,7 +1,5 @@
-import { useEffect, useMemo } from 'react'
-import { BufferAttribute, BufferGeometry, Mesh } from 'three'
-import { useGLTF } from '@react-three/drei'
-import { RigidBody, TrimeshCollider } from '@react-three/rapier'
+import { useMemo } from 'react'
+import { BufferAttribute, BufferGeometry } from 'three'
 import { MODELS } from '../assets/registry'
 import type {
   GeneratedTrackGeometry,
@@ -28,9 +26,6 @@ export function Track({ data }: { data: TrackData }) {
   return (
     <group>
       {data.geometry && <GeneratedTrack geometry={data.geometry} />}
-      {data.def.source.kind === 'centerline' && data.colliderRibbon && (
-        <MeshTrack modelPath={data.def.source.modelPath} collider={data.colliderRibbon} />
-      )}
       {data.tiles && data.cellSize && <TileTrack data={data} />}
       {/* tile tracks have the roadStart gate as their start line */}
       {!data.tiles && <StartLine data={data} />}
@@ -100,33 +95,6 @@ function GeneratedTrack({ geometry }: { geometry: GeneratedTrackGeometry }) {
       <mesh geometry={curbR} receiveShadow>
         <meshStandardMaterial vertexColors roughness={0.8} />
       </mesh>
-    </group>
-  )
-}
-
-/**
- * Mesh track: the glb is VISUAL ONLY. Driving happens on a smooth trimesh
- * ribbon generated from the extracted centerline — the model's own geometry
- * (box side faces, rails, duplicated strips) causes ghost collisions.
- */
-function MeshTrack({ modelPath, collider }: { modelPath: string; collider: RibbonGeometry }) {
-  const { scene } = useGLTF(modelPath)
-
-  useEffect(() => {
-    scene.traverse((o) => {
-      if (o instanceof Mesh) {
-        o.castShadow = true
-        o.receiveShadow = true
-      }
-    })
-  }, [scene])
-
-  return (
-    <group>
-      <RigidBody type="fixed" colliders={false}>
-        <TrimeshCollider args={[collider.positions, collider.indices]} />
-      </RigidBody>
-      <primitive object={scene} />
     </group>
   )
 }

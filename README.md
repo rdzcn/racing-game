@@ -14,7 +14,5 @@ Controls: arrow keys or WASD.
 
 ## Credits
 
-- Cars, track props and scenery: [Car Kit](https://kenney.nl/assets/car-kit) and
+- Cars, road tiles, and all props: [Car Kit](https://kenney.nl/assets/car-kit) and
   [Racing Kit](https://kenney.nl/assets/racing-kit) by **Kenney** (kenney.nl), CC0.
-- Track model: ["Race Track - C .001 - 3.3km"](https://sketchfab.com) by **Kristo.V**,
-  licensed under [CC Attribution-NonCommercial](https://creativecommons.org/licenses/by-nc/4.0/).

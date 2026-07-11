@@ -47,10 +47,6 @@ export interface TrackData {
   halfWidth: number
   curbWidth: number
   geometry?: GeneratedTrackGeometry
-  /** Mesh tracks: smooth drive-surface trimesh built from the centerline.
-   * The model's own trimesh is unusable — box side faces, rails and
-   * duplicated strips cause ghost collisions. */
-  colliderRibbon?: RibbonGeometry
   /** Tile tracks: Kenney road-piece placements for rendering */
   tiles?: TilePlacement[]
   /** Tile tracks: grid cell size (also the tile model scale) */
@@ -76,9 +72,7 @@ export function buildTrack(def: TrackDefinition): TrackData {
   const { centerline, tangents } =
     def.source.kind === 'waypoints'
       ? sampleWaypointSpline(def.source.waypoints, def.source.samples)
-      : def.source.kind === 'centerline'
-        ? fromCenterlinePoints(def.source.points)
-        : withComputedTangents(tiles!.centerline)
+      : withComputedTangents(tiles!.centerline)
 
   const n = centerline.length
   const halfWidth = def.width / 2
@@ -91,18 +85,6 @@ export function buildTrack(def: TrackDefinition): TrackData {
           curbRight: buildRibbon(centerline, tangents, halfWidth, halfWidth + def.curbWidth, CURB_Y),
           curbColors: buildCurbColors(n),
         }
-      : undefined
-
-  // mesh tracks drive on a clean generated surface at road height
-  const colliderRibbon =
-    def.source.kind === 'centerline'
-      ? buildRibbon(
-          centerline,
-          tangents,
-          -halfWidth - def.curbWidth,
-          halfWidth + def.curbWidth,
-          'centerline',
-        )
       : undefined
 
   const gates: Gate[] = []
@@ -123,7 +105,6 @@ export function buildTrack(def: TrackDefinition): TrackData {
     halfWidth,
     curbWidth: def.curbWidth,
     geometry,
-    colliderRibbon,
     tiles: tiles?.placements,
     cellSize: def.source.kind === 'tiles' ? def.source.cellSize : undefined,
     gates,
@@ -163,10 +144,6 @@ function sampleWaypointSpline(waypoints: [number, number][], samples: number) {
   return { centerline, tangents }
 }
 
-/** Pre-extracted mesh centerline (x, roadY, z) → samples + finite-difference tangents */
-function fromCenterlinePoints(points: [number, number, number][]) {
-  return withComputedTangents(points.map(([x, y, z]) => ({ x, y, z })))
-}
 
 /**
  * Strip between two signed lateral offsets from the centerline

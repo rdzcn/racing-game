@@ -66,7 +66,7 @@ export function Menu() {
       </div>
 
       <p className="absolute bottom-3 text-xs text-white/50">
-        Cars &amp; props by Kenney (kenney.nl) · Grand Circuit by Kristo.V — CC BY-NC
+        Cars, tracks &amp; props by Kenney (kenney.nl) — CC0
       </p>
     </div>
   )

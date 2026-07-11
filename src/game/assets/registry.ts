@@ -3,11 +3,8 @@
  *
  * Credits:
  * - kenney/*: Car Kit + Racing Kit by Kenney (kenney.nl), CC0 / public domain.
- * - grandTrack: "Race Track - C .001 - 3.3km" by Kristo.V (Sketchfab),
- *   CC Attribution-NonCommercial. Car prop removed, draco-compressed.
  */
 export const MODELS = {
-  grandTrack: '/models/track_grand.glb',
   carRace: '/models/kenney/race.glb',
   carKart: '/models/kenney/kart-ooli.glb',
   carFiretruck: '/models/kenney/firetruck.glb',

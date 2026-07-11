@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 import { MODELS } from '../assets/registry'
-import { generateDecorations, type DecorationModel } from '../systems/decorations'
-import type { TrackData } from '../systems/trackGeometry'
+import type { Decoration, DecorationModel } from '../systems/decorations'
 import { InstancedModel, type ModelInstance } from './InstancedModel'
 
 const URL: Record<DecorationModel, string> = {
@@ -20,10 +19,10 @@ const TIRE_HALF_THICKNESS = 0.17
 
 /** Curvature-driven track dressing: tire walls on corner outsides, tribunes
  * and tents along the straights, banner towers at the start. All instanced. */
-export function Decorations({ track }: { track: TrackData }) {
+export function Decorations({ decorations }: { decorations: Decoration[] }) {
   const groups = useMemo(() => {
     const byModel = new Map<DecorationModel, ModelInstance[]>()
-    for (const d of generateDecorations(track)) {
+    for (const d of decorations) {
       const list = byModel.get(d.model) ?? []
       list.push({
         x: d.x,
@@ -36,7 +35,7 @@ export function Decorations({ track }: { track: TrackData }) {
       byModel.set(d.model, list)
     }
     return [...byModel.entries()]
-  }, [track])
+  }, [decorations])
 
   return (
     <group>
