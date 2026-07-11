@@ -1,4 +1,6 @@
 import { MODELS } from './assets/registry'
+import { STARTER_GP_CELLS } from './assets/tracks/starterGP'
+import type { GridCellData } from './systems/gridTrack'
 
 export interface CarDefinition {
   id: string
@@ -51,9 +53,64 @@ export const cars: CarDefinition[] = [
     rotationY: Math.PI,
     colliderHalfExtents: [1.0, 0.6, 1.5],
   },
+  {
+    id: 'truck-red',
+    label: 'Red Truck',
+    emoji: '🛻',
+    modelPath: MODELS.truckRed,
+    scale: 1.5,
+    rotationY: Math.PI,
+    colliderHalfExtents: [1.1, 0.55, 2.1],
+  },
+  {
+    id: 'truck-green',
+    label: 'Green Truck',
+    emoji: '🚙',
+    modelPath: MODELS.truckGreen,
+    scale: 1.5,
+    rotationY: Math.PI,
+    colliderHalfExtents: [1.1, 0.55, 2.1],
+  },
+  {
+    id: 'truck-purple',
+    label: 'Purple Truck',
+    emoji: '🚐',
+    modelPath: MODELS.truckPurple,
+    scale: 1.5,
+    rotationY: Math.PI,
+    colliderHalfExtents: [1.1, 0.55, 2.1],
+  },
+  {
+    id: 'motorcycle',
+    label: 'Motorcycle',
+    emoji: '🏍️',
+    modelPath: MODELS.motorcycle,
+    scale: 1.6,
+    rotationY: Math.PI,
+    colliderHalfExtents: [0.5, 0.5, 1.35],
+  },
 ]
 
 export const defaultCarId = 'race'
+
+/** each race is this many laps, single-player or 2-player alike */
+export const LAPS_PER_RACE = 3
+
+/** points awarded per coin — shown as each player's race score */
+export const POINTS_PER_COIN = 10
+
+/** coins to place per track */
+export const COINS_PER_TRACK = 10
+
+/** Evenly distributes `count` coins across gates 1..gateCount-1 (gate 0 is
+ * the start/finish line, so it's never a coin slot). */
+function coinSlotsFor(gateCount: number, count: number = COINS_PER_TRACK): number[] {
+  const available = gateCount - 1
+  const n = Math.min(count, available)
+  const slots: number[] = []
+  for (let i = 0; i < n; i++) slots.push(1 + Math.floor((i * available) / n))
+  return slots
+}
 
 export function getCar(id: string): CarDefinition {
   return cars.find((c) => c.id === id) ?? cars[0]
@@ -90,6 +147,8 @@ export type TrackSource =
   | { kind: 'waypoints'; waypoints: [number, number][]; samples: number }
   /** Kenney road tiles laid out by a turtle program — see systems/tileTrack.ts */
   | { kind: 'tiles'; layout: string; cellSize: number }
+  /** Grid imported from a Godot GridMap scene — see systems/gridTrack.ts */
+  | { kind: 'grid'; cells: GridCellData[]; cellSize: number }
 
 export interface TrackDefinition {
   id: string
@@ -107,6 +166,8 @@ export interface TrackDefinition {
   killPlaneY: number
   /** side length of the grass plane (default 200) */
   groundSize?: number
+  /** false: skip auto-dressing (tires/stands/trees) — for worlds with baked scenery */
+  dressing?: boolean
   source: TrackSource
 }
 
@@ -146,7 +207,7 @@ export const tracks: TrackDefinition[] = [
     width: 12,
     curbWidth: 1.2,
     gateCount: 12,
-    coinSlots: [1, 3, 5, 7, 9, 11],
+    coinSlots: coinSlotsFor(12),
     killPlaneY: -10,
     source: { kind: 'waypoints', waypoints: meadowWaypoints, samples: 384 },
   },
@@ -157,7 +218,7 @@ export const tracks: TrackDefinition[] = [
     width: 9.8, // 0.7 × cellSize, the tiles' asphalt width
     curbWidth: 1,
     gateCount: 16,
-    coinSlots: [1, 3, 5, 7, 9, 11, 13, 15],
+    coinSlots: coinSlotsFor(16),
     killPlaneY: -10,
     groundSize: 560,
     source: { kind: 'tiles', layout: '30 L 3 L 30 L 3 L', cellSize: 14 },
@@ -169,7 +230,7 @@ export const tracks: TrackDefinition[] = [
     width: 9.8,
     curbWidth: 1,
     gateCount: 16,
-    coinSlots: [1, 3, 5, 7, 9, 11, 13, 15],
+    coinSlots: coinSlotsFor(16),
     killPlaneY: -10,
     groundSize: 460,
     source: { kind: 'tiles', layout: '8 r 1 l 8 l 1 r 8 r 6 r 26 r 6 r', cellSize: 14 },
@@ -181,10 +242,23 @@ export const tracks: TrackDefinition[] = [
     width: 9.8,
     curbWidth: 1,
     gateCount: 16,
-    coinSlots: [1, 3, 5, 7, 9, 11, 13, 15],
+    coinSlots: coinSlotsFor(16),
     killPlaneY: -10,
     groundSize: 760,
     source: { kind: 'tiles', layout: '6 r 1 l 5 l 1 r 5 L 18 L 18 L 18 L', cellSize: 14 },
+  },
+  {
+    id: 'starter-gp',
+    label: 'Forest Kart Loop',
+    description: "~0.3 km · Kenney's starter-kit track · cozy forest world",
+    width: 9.6, // 0.6 × cellSize, the starter tiles' asphalt width
+    curbWidth: 0.8,
+    gateCount: 8,
+    coinSlots: [1, 3, 5, 7],
+    killPlaneY: -10,
+    groundSize: 320,
+    dressing: false, // the world ships its own baked scenery tiles
+    source: { kind: 'grid', cells: STARTER_GP_CELLS, cellSize: 16 },
   },
 ]
 

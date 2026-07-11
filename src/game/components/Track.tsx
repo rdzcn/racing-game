@@ -6,6 +6,7 @@ import type {
   RibbonGeometry,
   TrackData,
 } from '../systems/trackGeometry'
+import type { GridModel } from '../systems/gridTrack'
 import type { TileModel } from '../systems/tileTrack'
 import { InstancedModel, type ModelInstance } from './InstancedModel'
 
@@ -27,8 +28,58 @@ export function Track({ data }: { data: TrackData }) {
     <group>
       {data.geometry && <GeneratedTrack geometry={data.geometry} />}
       {data.tiles && data.cellSize && <TileTrack data={data} />}
-      {/* tile tracks have the roadStart gate as their start line */}
-      {!data.tiles && <StartLine data={data} />}
+      {data.gridTiles && data.cellSize && <GridTrack data={data} />}
+      {/* tile/grid tracks bring their own start gate */}
+      {!data.tiles && !data.gridTiles && <StartLine data={data} />}
+    </group>
+  )
+}
+
+const GRID_MODEL_URL: Record<GridModel, string> = {
+  straight: MODELS.starterStraight,
+  corner: MODELS.starterCorner,
+  finish: MODELS.starterFinish,
+  ramp: MODELS.starterStraight, // no ramp in the imported layout
+  empty: MODELS.starterEmpty,
+  forest: MODELS.starterForest,
+  tents: MODELS.starterTents,
+}
+
+/** Godot's mesh library bakes some tiles rotated relative to their glb —
+ * connector logic runs in library space, rendering compensates here. */
+const GRID_MODEL_ROT_OFFSET: Partial<Record<GridModel, number>> = {
+  finish: Math.PI / 2,
+}
+
+/** Starter-kit world: every cell (road + baked scenery) instanced per model.
+ * Models are center-origin with ground at y=0 — drive surface = ground plane. */
+function GridTrack({ data }: { data: TrackData }) {
+  const scale = data.cellSize! / 10 // starter tiles are 10×10 units
+  const byModel = useMemo(() => {
+    const groups = new Map<GridModel, ModelInstance[]>()
+    for (const t of data.gridTiles!) {
+      const list = groups.get(t.model) ?? []
+      list.push({
+        x: t.x,
+        z: t.z,
+        rotationY: t.rotationY + (GRID_MODEL_ROT_OFFSET[t.model] ?? 0),
+        scale,
+      })
+      groups.set(t.model, list)
+    }
+    return [...groups.entries()]
+  }, [data, scale])
+
+  return (
+    <group>
+      {byModel.map(([model, instances]) => (
+        <InstancedModel
+          key={model}
+          url={GRID_MODEL_URL[model]}
+          instances={instances}
+          anchor="base-center"
+        />
+      ))}
     </group>
   )
 }

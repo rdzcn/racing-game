@@ -1,5 +1,6 @@
 import { CatmullRomCurve3, Vector3 } from 'three'
 import type { TrackDefinition } from '../config'
+import { buildGridTrack, type GridPlacement } from './gridTrack'
 import { buildTileTrack, type TilePlacement } from './tileTrack'
 
 export interface Vec2 {
@@ -49,7 +50,9 @@ export interface TrackData {
   geometry?: GeneratedTrackGeometry
   /** Tile tracks: Kenney road-piece placements for rendering */
   tiles?: TilePlacement[]
-  /** Tile tracks: grid cell size (also the tile model scale) */
+  /** Grid tracks (Godot import): full-world tile placements incl. scenery */
+  gridTiles?: GridPlacement[]
+  /** Tile/grid tracks: grid cell size (also the tile model scale) */
   cellSize?: number
   gates: Gate[]
   start: Pose
@@ -68,11 +71,15 @@ export function buildTrack(def: TrackDefinition): TrackData {
     def.source.kind === 'tiles'
       ? buildTileTrack(def.source.layout, def.source.cellSize)
       : undefined
+  const grid =
+    def.source.kind === 'grid'
+      ? buildGridTrack(def.source.cells, def.source.cellSize)
+      : undefined
 
   const { centerline, tangents } =
     def.source.kind === 'waypoints'
       ? sampleWaypointSpline(def.source.waypoints, def.source.samples)
-      : withComputedTangents(tiles!.centerline)
+      : withComputedTangents((tiles ?? grid)!.centerline)
 
   const n = centerline.length
   const halfWidth = def.width / 2
@@ -106,7 +113,8 @@ export function buildTrack(def: TrackDefinition): TrackData {
     curbWidth: def.curbWidth,
     geometry,
     tiles: tiles?.placements,
-    cellSize: def.source.kind === 'tiles' ? def.source.cellSize : undefined,
+    gridTiles: grid?.placements,
+    cellSize: def.source.kind !== 'waypoints' ? def.source.cellSize : undefined,
     gates,
     start,
   }
