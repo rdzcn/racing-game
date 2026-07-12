@@ -1,6 +1,6 @@
 import { useRef, type RefObject } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Quaternion, Vector3, type Object3D } from 'three'
+import { Quaternion, Vector3, type Camera, type Object3D } from 'three'
 import { cameraConfig } from '../config'
 
 const FORWARD = new Vector3(0, 0, -1)
@@ -12,8 +12,18 @@ const FORWARD = new Vector3(0, 0, -1)
  * camera and car disagree by a fraction of a step and the scene shakes.
  * Yaw-only heading (car pitch/bounce doesn't roll the camera), exponential
  * position smoothing. Independent of input and vehicle physics.
+ *
+ * `cameraRef` lets a caller drive an explicit camera object instead of the
+ * canvas's default camera — needed for split-screen, where two cameras
+ * (one per player) exist simultaneously and only one can be "the" default.
  */
-export function ChaseCamera({ targetRef }: { targetRef: RefObject<Object3D | null> }) {
+export function ChaseCamera({
+  targetRef,
+  cameraRef,
+}: {
+  targetRef: RefObject<Object3D | null>
+  cameraRef?: RefObject<Camera | null>
+}) {
   // reused per frame
   const pos = useRef(new Vector3()).current
   const quat = useRef(new Quaternion()).current
@@ -22,8 +32,9 @@ export function ChaseCamera({ targetRef }: { targetRef: RefObject<Object3D | nul
   const lookAt = useRef(new Vector3()).current
   const initialized = useRef(false)
 
-  useFrame(({ camera }, dt) => {
+  useFrame(({ camera: defaultCamera }, dt) => {
     const target = targetRef.current
+    const camera = cameraRef?.current ?? defaultCamera
     if (!target) return
 
     target.getWorldPosition(pos)

@@ -9,16 +9,21 @@ import type { TrackData } from '../systems/trackGeometry'
 const PICKUP_RADIUS = 2.5
 const COIN_Y = 1.1
 
-/** Spinning collectible coins on the track. Detection is distance-based —
- * cheaper than physics sensors and consistent with our on/off-track logic. */
-export function Coins({
-  carRef,
-  track,
-  playerIndex = 0,
-}: {
+export interface CoinCar {
   carRef: RefObject<RapierRigidBody | null>
+  playerIndex: 0 | 1
+}
+
+/** Spinning collectible coins on the track. Detection is distance-based —
+ * cheaper than physics sensors and consistent with our on/off-track logic.
+ * Coins are shared world state (first car there gets it), so this mounts
+ * once per scene and checks pickup for every car passed in `cars`. */
+export function Coins({
+  cars,
+  track,
+}: {
+  cars: CoinCar[]
   track: TrackData
-  playerIndex?: 0 | 1
 }) {
   const positions = useMemo(() => coinPositions(track, track.def.coinSlots), [track])
   const collected = useRaceStore((s) => s.collectedCoins)
@@ -30,11 +35,13 @@ export function Coins({
     const group = groupRef.current
     if (group) for (const coin of group.children) coin.rotation.y += dt * 2.5
 
-    const body = carRef.current
-    if (!body) return
-    const p = body.translation()
-    const hit = checkCoinPickup(positions, collected, p.x, p.z, PICKUP_RADIUS)
-    if (hit >= 0) collectCoin(playerIndex, hit)
+    for (const { carRef, playerIndex } of cars) {
+      const body = carRef.current
+      if (!body) continue
+      const p = body.translation()
+      const hit = checkCoinPickup(positions, collected, p.x, p.z, PICKUP_RADIUS)
+      if (hit >= 0) collectCoin(playerIndex, hit)
+    }
   })
 
   return (

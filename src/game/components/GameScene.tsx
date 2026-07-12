@@ -79,7 +79,7 @@ export function GameScene({
         <Track data={track} />
         <Decorations decorations={dressing.decorations} />
         <TireBarriers barriers={dressing.barriers} />
-        <Coins carRef={carRef} track={track} playerIndex={playerIndex} />
+        <Coins cars={[{ carRef, playerIndex }]} track={track} />
         <Car ref={carRef} def={carDef} visualRef={carVisualRef} spawn={spawn} playerIndex={playerIndex} />
         <VehicleController carRef={carRef} track={track} scheme={scheme} playerIndex={playerIndex} />
         <ResetHandler carRef={carRef} spawn={spawn} />
