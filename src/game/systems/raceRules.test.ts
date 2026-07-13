@@ -72,6 +72,41 @@ describe('processGateCrossing', () => {
     expect(processGateCrossing(p, gates, g.x + R + 0.5, g.z, g.tx, g.tz, R)).toBe('none')
     expect(processGateCrossing(p, gates, g.x + R - 0.5, g.z, g.tx * 5, g.tz * 5, R)).toBe('started')
   })
+
+  it('counts a diagonal crossing near the track edge (box, not circle)', () => {
+    // at max lateral offset (hugging the edge) AND slightly off the gate's
+    // exact longitudinal position — a circular hypot check would reject
+    // this even though the car is clearly still crossing the checkpoint.
+    const p = createLapProgress()
+    const g = gates[0] // tx=0, tz=-1 → lateral axis is x, longitudinal axis is z
+    const lateral = R * 0.9
+    const longitudinal = R * 0.9
+    expect(
+      processGateCrossing(p, gates, g.x + lateral, g.z - longitudinal, g.tx * 5, g.tz * 5, R),
+    ).toBe('started')
+  })
+
+  it('does not fire early just from being near the gate — only on the actual crossing', () => {
+    // approaching but still behind the line (within the box, but not past it
+    // yet) must not count — otherwise the race can "finish" up to `radius`
+    // meters before the car reaches the visual finish line.
+    const p = createLapProgress()
+    const g = gates[0]
+    const approaching = processGateCrossing(
+      p,
+      gates,
+      g.x,
+      g.z + R * 0.5, // behind the line along tz=-1 (forward is -z)
+      g.tx * 5,
+      g.tz * 5,
+      R,
+    )
+    expect(approaching).toBe('none')
+    expect(p.started).toBe(false)
+    // next frame, now at/just past the line — this is the frame that counts
+    const crossing = processGateCrossing(p, gates, g.x, g.z, g.tx * 5, g.tz * 5, R)
+    expect(crossing).toBe('started')
+  })
 })
 
 describe('integration with the real track', () => {
