@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { LAPS_PER_RACE, POINTS_PER_COIN, defaultCarId, defaultTrackId, getTrack } from '../config'
 
-export type GameStatus = 'menu' | 'carSelect' | 'playing' | 'paused' | 'finished'
+export type GameStatus = 'menu' | 'trackSelect' | 'carSelect' | 'playing' | 'paused' | 'finished'
 export type GameMode = 'single' | 'two'
 
 /** Per-player race progress. In single-player mode there's exactly one of
@@ -44,10 +44,12 @@ export interface RaceState {
   resetCount: number
 
   setMode: (mode: GameMode) => void
+  goToTrackSelect: () => void
   selectTrack: (id: string) => void
-  selectCar: (playerIndex: number, id: string) => void
   goToCarSelect: () => void
+  selectCar: (playerIndex: number, id: string) => void
   backToMenu: () => void
+  backToTrackSelect: () => void
   startGame: () => void
   pause: (now: number) => void
   resume: (now: number) => void
@@ -102,9 +104,14 @@ export const useRaceStore = create<RaceState>()((set) => ({
   setMode: (mode) =>
     set((s) => (s.status === 'menu' ? { mode, players: playersForMode(mode, s.players) } : s)),
 
+  // screen flow: menu (1p/2p) -> trackSelect (player 1 picks for everyone,
+  // even in 2-player mode) -> carSelect (each player picks their own car,
+  // split-screen in 2-player mode) -> playing
+  goToTrackSelect: () => set((s) => (s.status === 'menu' ? { status: 'trackSelect' } : s)),
+
   selectTrack: (id) =>
     set((s) =>
-      s.status === 'menu'
+      s.status === 'trackSelect'
         ? {
             selectedTrackId: id,
             collectedCoins: freshCoins(id),
@@ -115,23 +122,24 @@ export const useRaceStore = create<RaceState>()((set) => ({
         : s,
     ),
 
+  goToCarSelect: () => set((s) => (s.status === 'trackSelect' ? { status: 'carSelect' } : s)),
+
   selectCar: (playerIndex, id) =>
     set((s) => {
-      if (s.status !== 'menu' && s.status !== 'carSelect') return s
+      if (s.status !== 'carSelect') return s
       if (!s.players[playerIndex]) return s
       const players = s.players.slice()
       players[playerIndex] = { ...players[playerIndex], carId: id }
       return { players }
     }),
 
-  goToCarSelect: () =>
-    set((s) => (s.status === 'menu' && s.mode === 'two' ? { status: 'carSelect' } : s)),
+  backToMenu: () => set((s) => (s.status === 'trackSelect' ? { status: 'menu' } : s)),
 
-  backToMenu: () => set((s) => (s.status === 'carSelect' ? { status: 'menu' } : s)),
+  backToTrackSelect: () => set((s) => (s.status === 'carSelect' ? { status: 'trackSelect' } : s)),
 
   startGame: () =>
     set((s) => {
-      if (s.status !== 'menu' && s.status !== 'carSelect') return s
+      if (s.status !== 'carSelect') return s
       if (!s.players.every((p) => p.carId != null)) return s
       return {
         players: s.players.map(clearedForRestart),

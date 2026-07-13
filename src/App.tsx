@@ -9,6 +9,7 @@ import { HUD } from './ui/HUD'
 import { Menu } from './ui/Menu'
 import { PauseOverlay } from './ui/PauseOverlay'
 import { ResultsOverlay } from './ui/ResultsOverlay'
+import { TrackSelect } from './ui/TrackSelect'
 
 function usePauseKey() {
   const status = useRaceStore((s) => s.status)
@@ -69,6 +70,7 @@ function App() {
         </div>
       )}
       {status === 'menu' && <Menu />}
+      {status === 'trackSelect' && <TrackSelect />}
       {status === 'carSelect' && <CarSelect />}
       {status === 'paused' && <PauseOverlay />}
       {status === 'finished' && <ResultsOverlay />}

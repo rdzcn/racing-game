@@ -35,6 +35,8 @@ describe('raceStore — single player', () => {
   })
 
   it('finishes the race after LAPS_PER_RACE laps and shows the winner', () => {
+    store().goToTrackSelect()
+    store().goToCarSelect()
     store().startGame()
     store().startLap(0, 0)
     for (let lap = 1; lap < LAPS_PER_RACE; lap++) store().completeLap(0, lap * 10000)
@@ -71,6 +73,8 @@ describe('raceStore — single player', () => {
   })
 
   it('pause freezes and resume shifts the lap clock by the frozen duration', () => {
+    store().goToTrackSelect()
+    store().goToCarSelect()
     store().startGame()
     store().startLap(0, 1000)
     store().pause(5000)
@@ -93,6 +97,8 @@ describe('raceStore — single player', () => {
   })
 
   it('restartRace clears race data, keeps playing, bumps resetCount', () => {
+    store().goToTrackSelect()
+    store().goToCarSelect()
     store().startGame()
     const count = store().resetCount
     store().startLap(0, 0)
@@ -120,12 +126,16 @@ describe('raceStore — two player', () => {
     expect(p(1).carId).toBeNull()
   })
 
-  it('goToCarSelect only works once a mode and track are set, from the menu', () => {
+  it('goToCarSelect only works once trackSelect has been reached', () => {
+    store().goToCarSelect() // too early — still on the mode-select menu
+    expect(store().status).toBe('menu')
+    store().goToTrackSelect()
     store().goToCarSelect()
     expect(store().status).toBe('carSelect')
   })
 
   it('startGame is blocked until both players have chosen a car', () => {
+    store().goToTrackSelect()
     store().goToCarSelect()
     store().selectCar(0, 'race')
     store().startGame()
@@ -137,6 +147,7 @@ describe('raceStore — two player', () => {
   })
 
   it('tracks each player independently and ends the race when the first finishes', () => {
+    store().goToTrackSelect()
     store().goToCarSelect()
     store().selectCar(0, 'race')
     store().selectCar(1, 'kart')
@@ -157,6 +168,7 @@ describe('raceStore — two player', () => {
   })
 
   it('shared coins award points only to the player whose car reached them', () => {
+    store().goToTrackSelect()
     store().goToCarSelect()
     store().selectCar(0, 'race')
     store().selectCar(1, 'kart')

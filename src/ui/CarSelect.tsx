@@ -9,7 +9,7 @@ function PlayerPanel({ index, label }: { index: number; label: string }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4 p-4">
       <div className="text-2xl font-black text-white">{label}</div>
-      <div className="flex gap-3">
+      <div className="flex flex-wrap justify-center gap-3">
         {cars.map((c) => (
           <button
             key={c.id}
@@ -29,23 +29,32 @@ function PlayerPanel({ index, label }: { index: number; label: string }) {
   )
 }
 
-/** 2-player car picker — split top/bottom, matching the in-race split-screen
- * layout so each player picks in "their half" before the race starts. */
+/** Screen 3 — car select. Single-player gets one centered panel; 2-player
+ * mode splits the screen vertically (left/right) so each player picks in
+ * "their half" — same left/right layout as the in-race split-screen would
+ * suggest for a head-to-head duel. */
 export function CarSelect() {
-  const backToMenu = useRaceStore((s) => s.backToMenu)
+  const mode = useRaceStore((s) => s.mode)
+  const backToTrackSelect = useRaceStore((s) => s.backToTrackSelect)
   const startGame = useRaceStore((s) => s.startGame)
   const ready = useRaceStore((s) => s.players.every((p) => p.carId != null))
   const { active, progress } = useProgress()
 
   return (
     <div className="absolute inset-0 flex flex-col bg-black/60 font-sans">
-      <div className="flex flex-1 flex-col divide-y-4 divide-white/20">
-        <PlayerPanel index={0} label="Player 1 — WASD" />
-        <PlayerPanel index={1} label="Player 2 — Arrow Keys" />
-      </div>
+      {mode === 'single' ? (
+        <div className="flex flex-1 items-center justify-center">
+          <PlayerPanel index={0} label="Choose your car" />
+        </div>
+      ) : (
+        <div className="flex flex-1 divide-x-4 divide-white/20">
+          <PlayerPanel index={0} label="Player 1 — WASD" />
+          <PlayerPanel index={1} label="Player 2 — Arrow Keys" />
+        </div>
+      )}
       <div className="flex items-center justify-center gap-4 py-6">
         <button
-          onClick={backToMenu}
+          onClick={backToTrackSelect}
           className="rounded-xl bg-gray-600 px-8 py-3 text-xl font-bold text-white shadow-lg transition hover:scale-105 hover:bg-gray-500 active:scale-95"
         >
           ← Back
@@ -61,3 +70,4 @@ export function CarSelect() {
     </div>
   )
 }
+
