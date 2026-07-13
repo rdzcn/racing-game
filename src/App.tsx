@@ -33,6 +33,12 @@ function App() {
   usePauseKey()
 
   const showHud = status === 'playing' || status === 'paused'
+  // the 3D scene only shows behind the HUD once a race is actually running
+  // (or paused/finished mid-race) — the pre-race menus get a plain
+  // backdrop instead of the track, so car/track models still preload in the
+  // background (the canvas stays mounted, just visually covered) without
+  // spoiling the "menu" feel with a moving racetrack behind it.
+  const inRace = status === 'playing' || status === 'paused' || status === 'finished'
 
   return (
     <div className="relative h-screen w-screen bg-black">
@@ -68,6 +74,9 @@ function App() {
             {showHud && <HUD playerIndex={1} label="Player 2" />}
           </div>
         </div>
+      )}
+      {!inRace && (
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-900 to-black" />
       )}
       {status === 'menu' && <Menu />}
       {status === 'trackSelect' && <TrackSelect />}
