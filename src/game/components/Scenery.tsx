@@ -1,5 +1,7 @@
 import { useMemo } from 'react'
 import { MODELS } from '../assets/registry'
+import { getSeason } from '../seasons'
+import { useSettingsStore } from '../state/settingsStore'
 import { generatePlacements } from '../systems/scenery'
 import type { TrackData } from '../systems/trackGeometry'
 import { InstancedModel, type ModelInstance } from './InstancedModel'
@@ -32,11 +34,12 @@ export function Scenery({
   )
   const large = useMemo(() => trees.filter((_, i) => i % 2 === 0), [trees])
   const small = useMemo(() => trees.filter((_, i) => i % 2 === 1), [trees])
+  const treeTint = getSeason(useSettingsStore((s) => s.season)).treeTint
 
   return (
     <group>
-      <InstancedModel url={MODELS.treeLarge} instances={large} />
-      <InstancedModel url={MODELS.treeSmall} instances={small} />
+      <InstancedModel url={MODELS.treeLarge} instances={large} tint={treeTint} />
+      <InstancedModel url={MODELS.treeSmall} instances={small} tint={treeTint} />
       {startProps && <StartProps track={track} />}
     </group>
   )

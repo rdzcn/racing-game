@@ -1,6 +1,8 @@
 import { useMemo, useRef, type RefObject } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { DirectionalLight, Object3D, Vector3 } from 'three'
+import { getSeason } from '../seasons'
+import { useSettingsStore } from '../state/settingsStore'
 
 // tight frustum for crisp shadows — the light follows the car, so it only
 // ever needs to cover the area around it
@@ -24,16 +26,18 @@ export function Lights({ followRef }: { followRef?: RefObject<Object3D | null> }
     target.updateMatrixWorld()
   })
 
+  const season = getSeason(useSettingsStore((s) => s.season))
+
   return (
     <>
-      <ambientLight intensity={0.4} />
+      <ambientLight intensity={season.ambientIntensity} />
       <primitive object={target} />
       <directionalLight
         ref={lightRef}
         castShadow
         position={[20, 30, 10]}
         target={target}
-        intensity={2}
+        intensity={season.sunIntensity}
         shadow-mapSize={[2048, 2048]}
         shadow-camera-left={-SHADOW_BOUNDS}
         shadow-camera-right={SHADOW_BOUNDS}

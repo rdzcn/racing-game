@@ -1,6 +1,7 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import {
   Box3,
+  Color,
   InstancedMesh,
   Matrix4,
   Mesh,
@@ -43,19 +44,33 @@ export function InstancedModel({
   url,
   instances,
   anchor = 'base-center',
+  tint,
 }: {
   url: string
   instances: ModelInstance[]
   anchor?: 'base-center' | 'top-center' | 'center'
+  /** multiplied into the model's materials — seasons tint trees this way */
+  tint?: string
 }) {
   const { scene } = useGLTF(url)
 
   const { parts, correction } = useMemo(() => {
     scene.updateMatrixWorld(true)
+    const tintMaterial = (m: Material | Material[]): Material | Material[] => {
+      if (!tint || tint === '#ffffff') return m
+      if (Array.isArray(m)) return m.map((x) => tintMaterial(x) as Material)
+      const clone = m.clone()
+      if ('color' in clone && clone.color instanceof Color) clone.color.set(tint)
+      return clone
+    }
     const out: ModelPart[] = []
     scene.traverse((o) => {
       if (o instanceof Mesh) {
-        out.push({ geometry: o.geometry, material: o.material, matrix: o.matrixWorld.clone() })
+        out.push({
+          geometry: o.geometry,
+          material: tintMaterial(o.material),
+          matrix: o.matrixWorld.clone(),
+        })
       }
     })
     const box = new Box3().setFromObject(scene)
@@ -66,7 +81,7 @@ export function InstancedModel({
       parts: out,
       correction: new Matrix4().makeTranslation(-center.x, -yRef, -center.z),
     }
-  }, [scene, anchor])
+  }, [scene, anchor, tint])
 
   const refs = useRef<(InstancedMesh | null)[]>([])
 
