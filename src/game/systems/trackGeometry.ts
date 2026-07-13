@@ -114,7 +114,10 @@ export function buildTrack(def: TrackDefinition): TrackData {
     geometry,
     tiles: tiles?.placements,
     gridTiles: grid?.placements,
-    cellSize: def.source.kind !== 'waypoints' ? def.source.cellSize : undefined,
+    cellSize:
+      def.source.kind === 'tiles' || def.source.kind === 'grid'
+        ? def.source.cellSize
+        : undefined,
     gates,
     start,
   }

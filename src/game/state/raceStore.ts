@@ -58,6 +58,8 @@ export interface RaceState {
   startLap: (playerIndex: number, now: number) => void
   completeLap: (playerIndex: number, now: number) => void
   collectCoin: (playerIndex: number, index: number) => void
+  /** endless mode: unbounded coin field, so points are added directly */
+  addScore: (playerIndex: number, points: number) => void
   reset: () => void
 }
 
@@ -232,6 +234,15 @@ export const useRaceStore = create<RaceState>()((set) => ({
       const p = players[playerIndex]
       if (p) players[playerIndex] = { ...p, score: p.score + POINTS_PER_COIN }
       return { collectedCoins, coinsCollected: s.coinsCollected + 1, players }
+    }),
+
+  addScore: (playerIndex, points) =>
+    set((s) => {
+      const p = s.players[playerIndex]
+      if (!p) return s
+      const players = s.players.slice()
+      players[playerIndex] = { ...p, score: p.score + points }
+      return { players }
     }),
 
   reset: () =>

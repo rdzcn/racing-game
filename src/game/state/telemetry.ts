@@ -13,10 +13,12 @@ export interface PlayerTelemetry {
   forwardSpeedMs: number
   /** -1..1 steering input (drives front-wheel visuals) */
   steer: number
+  /** endless mode: distance along the road so far */
+  distanceKm: number
 }
 
 function makeTelemetry(): PlayerTelemetry {
-  return { speedKmh: 0, forwardSpeedMs: 0, steer: 0 }
+  return { speedKmh: 0, forwardSpeedMs: 0, steer: 0, distanceKm: 0 }
 }
 
 export const telemetry: readonly [PlayerTelemetry, PlayerTelemetry] = [

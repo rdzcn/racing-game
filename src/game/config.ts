@@ -149,6 +149,8 @@ export type TrackSource =
   | { kind: 'tiles'; layout: string; cellSize: number }
   /** Grid imported from a Godot GridMap scene — see systems/gridTrack.ts */
   | { kind: 'grid'; cells: GridCellData[]; cellSize: number }
+  /** Procedural infinite cruise — see systems/endlessRoad.ts */
+  | { kind: 'endless'; seed: number }
 
 export interface TrackDefinition {
   id: string
@@ -265,6 +267,19 @@ export const tracks: TrackDefinition[] = [
       cells: buildGridWorld('3 r 1 l 3 l 1 r 3 r 3 r 11 r 3 r'),
       cellSize: 16,
     },
+  },
+  {
+    id: 'endless',
+    label: 'Endless Drive',
+    description: '∞ km · procedural road, no laps, just cruise · try the seasons!',
+    width: 12,
+    curbWidth: 1,
+    gateCount: 0, // no gates — endless mode has no laps
+    coinSlots: [],
+    killPlaneY: -10,
+    groundSize: 700, // drives the fog distance; the grass itself follows the car
+    dressing: false,
+    source: { kind: 'endless', seed: 88 },
   },
 ]
 

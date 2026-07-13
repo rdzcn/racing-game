@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { LAPS_PER_RACE } from '../game/config'
+import { LAPS_PER_RACE, getTrack } from '../game/config'
 import { useRaceStore } from '../game/state/raceStore'
 import { telemetry } from '../game/state/telemetry'
 import { formatLapTime } from './format'
@@ -25,6 +25,7 @@ export function HUD({ playerIndex = 0, label }: { playerIndex?: 0 | 1; label?: s
   const coinsCollected = useRaceStore((s) => s.coinsCollected)
   const totalCoins = useRaceStore((s) => s.collectedCoins.length)
   const status = useRaceStore((s) => s.status)
+  const endless = getTrack(useRaceStore((s) => s.selectedTrackId)).source.kind === 'endless'
   // ticks at 10Hz while playing — drives both the lap clock and the speedo refresh
   const now = useNow(status === 'playing')
   // while paused the clock freezes at the pause moment
@@ -37,25 +38,33 @@ export function HUD({ playerIndex = 0, label }: { playerIndex?: 0 | 1; label?: s
       <div>
         {label && <div className="mb-1 text-lg font-black text-sky-300">{label}</div>}
         <div className="text-3xl font-bold">
-          {player.lap > 0 ? `Lap ${player.lap} / ${LAPS_PER_RACE}` : 'Cross the line to start!'}
+          {endless
+            ? `🛣️ ${telemetry[playerIndex].distanceKm.toFixed(1)} km`
+            : player.lap > 0
+              ? `Lap ${player.lap} / ${LAPS_PER_RACE}`
+              : 'Cross the line to start!'}
         </div>
         <div className="mt-1 flex items-center gap-2 text-xl font-bold text-amber-300">
           <span className="inline-block h-4 w-4 rounded-full border-2 border-amber-500 bg-amber-300" />
-          <span className="tabular-nums">
-            {coinsCollected} / {totalCoins}
-          </span>
-          <span className="text-white">· {player.score} pts</span>
+          {!endless && (
+            <span className="tabular-nums">
+              {coinsCollected} / {totalCoins}
+            </span>
+          )}
+          <span className="text-white">{endless ? `${player.score} pts` : `· ${player.score} pts`}</span>
         </div>
       </div>
-      <div className="text-right">
-        <div className="text-3xl font-bold tabular-nums">
-          {elapsed != null ? formatLapTime(elapsed) : '–:––.–'}
+      {!endless && (
+        <div className="text-right">
+          <div className="text-3xl font-bold tabular-nums">
+            {elapsed != null ? formatLapTime(elapsed) : '–:––.–'}
+          </div>
+          <div className="mt-1 text-sm tabular-nums opacity-80">
+            {player.lastLapTime != null && <div>Last {formatLapTime(player.lastLapTime)}</div>}
+            {player.bestLapTime != null && <div>Best {formatLapTime(player.bestLapTime)}</div>}
+          </div>
         </div>
-        <div className="mt-1 text-sm tabular-nums opacity-80">
-          {player.lastLapTime != null && <div>Last {formatLapTime(player.lastLapTime)}</div>}
-          {player.bestLapTime != null && <div>Best {formatLapTime(player.bestLapTime)}</div>}
-        </div>
-      </div>
+      )}
 
       {/* speedometer — anchored to this panel, not the viewport, so it stays
           in the right half when split-screen */}
