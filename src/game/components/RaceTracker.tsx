@@ -2,7 +2,7 @@ import { useEffect, useRef, type RefObject } from 'react'
 import { useFrame } from '@react-three/fiber'
 import type { RapierRigidBody } from '@react-three/rapier'
 import { useRaceStore } from '../state/raceStore'
-import { createLapProgress, processGateCrossing } from '../systems/raceRules'
+import { createLapProgress, gateRadius, processGateCrossing } from '../systems/raceRules'
 import type { TrackData } from '../systems/trackGeometry'
 
 /** Watches the car cross checkpoint gates and drives the race store.
@@ -21,7 +21,7 @@ export function RaceTracker({
   const completeLap = useRaceStore((s) => s.completeLap)
   const status = useRaceStore((s) => s.status)
   const resetCount = useRaceStore((s) => s.resetCount)
-  const radius = track.halfWidth + track.curbWidth
+  const radius = gateRadius(track)
 
   // fresh gate progress whenever a race (re)starts
   useEffect(() => {

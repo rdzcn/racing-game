@@ -1,5 +1,22 @@
 import type { Gate } from './trackGeometry'
 
+/** Extra tolerance (m) added on top of the track's physical half-width when
+ * checking gate crossings. Real racing lines commonly clip a curb or drift
+ * onto the grass — especially through tight chicanes — and missing just one
+ * intermediate gate stalls lap counting until the loop comes all the way
+ * back around (very noticeable on the start/finish gate). Narrower,
+ * technical tracks (e.g. Forest Kart Loop's chicane right after the start)
+ * need this most, since their bare track-width radius leaves almost no
+ * margin for error. */
+const GATE_MARGIN = 4
+
+/** Gate-crossing detection radius for a track — its physical width (from
+ * centerline to the outer curb edge) plus `GATE_MARGIN`. Shared by
+ * `RaceTracker` and tests so both stay in sync. */
+export function gateRadius(track: { halfWidth: number; curbWidth: number }): number {
+  return track.halfWidth + track.curbWidth + GATE_MARGIN
+}
+
 /**
  * Lap tracking via ordered checkpoint gates. Only the *next* expected gate
  * counts, and only when crossed moving in the track direction — so cutting

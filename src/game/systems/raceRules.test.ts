@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { getTrack } from '../config'
-import { createLapProgress, processGateCrossing } from './raceRules'
+import { createLapProgress, gateRadius, processGateCrossing } from './raceRules'
 import { buildTrack, type Gate } from './trackGeometry'
 
 const meadow = getTrack('meadow')
@@ -112,7 +112,7 @@ describe('processGateCrossing', () => {
 describe('integration with the real track', () => {
   it('driving the centerline start-to-start produces started + one lap', () => {
     const track = buildTrack(meadow)
-    const radius = track.halfWidth + track.curbWidth
+    const radius = gateRadius(track)
     const p = createLapProgress()
     const events: string[] = []
     const n = track.centerline.length

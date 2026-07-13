@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { getTrack } from '../config'
 import { buildGridTrack, type GridCellData } from './gridTrack'
 import { buildGridWorld } from './gridWorld'
-import { createLapProgress, processGateCrossing } from './raceRules'
+import { createLapProgress, gateRadius, processGateCrossing } from './raceRules'
 import { buildTrack } from './trackGeometry'
 
 const C = 16
@@ -43,7 +43,7 @@ describe('buildGridWorld + buildGridTrack (Forest Kart Loop)', () => {
 
   it('lap counting works: driving the loop yields started + gates + lap', () => {
     const track = buildTrack(def)
-    const radius = track.halfWidth + track.curbWidth
+    const radius = gateRadius(track)
     const p = createLapProgress()
     const events: string[] = []
     const n = track.centerline.length
@@ -52,6 +52,46 @@ describe('buildGridWorld + buildGridTrack (Forest Kart Loop)', () => {
       const c = track.centerline[i]
       const t = track.tangents[i]
       const ev = processGateCrossing(p, track.gates, c.x, c.z, t.x * 10, t.z * 10, radius)
+      if (ev !== 'none') events.push(ev)
+    }
+    expect(events[0]).toBe('started')
+    expect(events.filter((e) => e === 'lap')).toHaveLength(1)
+    expect(events.filter((e) => e === 'gate')).toHaveLength(def.gateCount - 1)
+  })
+
+  it('lap counting survives a lateral cut through the tight chicane right after the start', () => {
+    // Forest Kart Loop's layout throws a 1-tile chicane ("1 l" / "1 r") right
+    // after the start straight, and its track is the narrowest/tightest of
+    // any track (halfWidth+curbWidth ≈ 5.6m — the old, unforgiving gate
+    // radius). A real driving line commonly clips a curb or drifts onto the
+    // grass through a chicane like that; this simulates a car that's
+    // consistently offset just beyond the *old* radius but within the new
+    // gateRadius() margin, and still completes the lap without stalling on
+    // a missed intermediate gate.
+    const track = buildTrack(def)
+    const oldRadius = track.halfWidth + track.curbWidth
+    const radius = gateRadius(track)
+    const cut = oldRadius + 1.5
+    expect(cut).toBeLessThan(radius)
+
+    const p = createLapProgress()
+    const events: string[] = []
+    const n = track.centerline.length
+    for (let s = 0; s <= n + 5; s++) {
+      const i = s % n
+      const c = track.centerline[i]
+      const t = track.tangents[i]
+      const nx = -t.z // perpendicular (right-hand) to travel direction
+      const nz = t.x
+      const ev = processGateCrossing(
+        p,
+        track.gates,
+        c.x + nx * cut,
+        c.z + nz * cut,
+        t.x * 10,
+        t.z * 10,
+        radius,
+      )
       if (ev !== 'none') events.push(ev)
     }
     expect(events[0]).toBe('started')
